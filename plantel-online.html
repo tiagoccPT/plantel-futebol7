@@ -121,6 +121,7 @@
   }
 
   /* LIST_DRAG_AV_V1 */
+  /* LIST_DRAG_FIX_V2 */
   .drag-handle{
     cursor:grab;
     touch-action:none;
@@ -1161,45 +1162,64 @@
       event.preventDefault();
       event.stopPropagation();
 
+      const pointerId = event.pointerId;
       let moved = false;
+
       row.classList.add("dragging-row");
       document.body.classList.add("reordering-list");
-      handle.setPointerCapture(event.pointerId);
 
       const onMove = moveEvent => {
+        if (moveEvent.pointerId !== pointerId) return;
         moveEvent.preventDefault();
 
-        const element = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
-        const target = element && element.closest("tr[data-player-id]");
+        const y = moveEvent.clientY;
+        const rows = Array.from(
+          els.lista.querySelectorAll("tr[data-player-id]")
+        ).filter(item => item !== row);
 
-        if (!target || target === row || target.parentElement !== els.lista) return;
+        let placed = false;
 
-        const rect = target.getBoundingClientRect();
-        const insertBefore = moveEvent.clientY < rect.top + rect.height / 2;
-
-        if (insertBefore) {
-          els.lista.insertBefore(row, target);
-        } else {
-          els.lista.insertBefore(row, target.nextSibling);
+        for (const target of rows) {
+          const rect = target.getBoundingClientRect();
+          if (y < rect.top + rect.height / 2) {
+            if (row.nextSibling !== target) {
+              els.lista.insertBefore(row, target);
+              moved = true;
+            }
+            placed = true;
+            break;
+          }
         }
 
-        moved = true;
+        if (!placed && row !== els.lista.lastElementChild) {
+          els.lista.appendChild(row);
+          moved = true;
+        }
+
+        const edge = 70;
+        if (y < edge) window.scrollBy(0, -12);
+        if (y > window.innerHeight - edge) window.scrollBy(0, 12);
       };
 
-      const finish = () => {
+      const finish = finishEvent => {
+        if (finishEvent && finishEvent.pointerId !== pointerId) return;
+
+        document.removeEventListener("pointermove", onMove, true);
+        document.removeEventListener("pointerup", finish, true);
+        document.removeEventListener("pointercancel", finish, true);
+
         row.classList.remove("dragging-row");
         document.body.classList.remove("reordering-list");
-
-        handle.removeEventListener("pointermove", onMove);
-        handle.removeEventListener("pointerup", finish);
-        handle.removeEventListener("pointercancel", finish);
 
         if (moved) commitPlayerOrderFromTable();
       };
 
-      handle.addEventListener("pointermove", onMove);
-      handle.addEventListener("pointerup", finish);
-      handle.addEventListener("pointercancel", finish);
+      document.addEventListener("pointermove", onMove, {
+        capture: true,
+        passive: false
+      });
+      document.addEventListener("pointerup", finish, true);
+      document.addEventListener("pointercancel", finish, true);
     });
   }
 
