@@ -1,0 +1,1 @@
+Apply only Inicial, Suplente, Reserva and Plantel actions.
