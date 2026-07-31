@@ -423,7 +423,17 @@
 
   function readLocal() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(localKey()) || "{}");
+      let raw = localStorage.getItem(localKey());
+
+      if (!raw && !dbId) {
+        raw =
+          localStorage.getItem("f7_cache_v3") ||
+          localStorage.getItem("plantel_futebol7_completo_v10") ||
+          "";
+      }
+
+      const parsed = JSON.parse(raw || "{}");
+
       return {
         players: Array.isArray(parsed.players) ? parsed.players : [],
         updatedAt: Number(parsed.updatedAt) || 0
