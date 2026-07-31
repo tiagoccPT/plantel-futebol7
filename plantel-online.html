@@ -454,6 +454,9 @@
   function ensurePlayerShape(player) {
     player.status = normalizeStatus(player.status);
     if (!Array.isArray(player.cards)) player.cards = [];
+    if (typeof player.selected !== "boolean") {
+      player.selected = player.cards.length > 0;
+    }
     return player;
   }
 
@@ -773,6 +776,7 @@
       principal: els.principal.value.trim(),
       secundaria: els.secundaria.value.trim(),
       status: "inicial",
+      selected: false,
       cards: []
     });
 
@@ -805,6 +809,7 @@
     plantelSnapshot = null;
 
     state.players.forEach(player => {
+      player.selected = false;
       player.cards = [];
     });
     state.selectedCardId = null;
@@ -853,13 +858,16 @@
   function restorePlantelSnapshot(shouldSave = true) {
     if (!plantelViewActive) return;
 
-    const cardsByPlayer = new Map(
-      (plantelSnapshot || []).map(item => [item.id, item.cards])
+    const snapshotByPlayer = new Map(
+      (plantelSnapshot || []).map(item => [item.id, item])
     );
 
     state.players.forEach(player => {
-      if (cardsByPlayer.has(player.id)) {
-        player.cards = cloneCards(cardsByPlayer.get(player.id));
+      const saved = snapshotByPlayer.get(player.id);
+      if (saved) {
+        player.cards = cloneCards(saved.cards);
+        player.selected = Boolean(saved.selected);
+        player.status = normalizeStatus(saved.status);
       }
     });
 
@@ -876,8 +884,20 @@
     const player = state.players.find(item => item.id === playerId);
     if (!player) return;
 
-    player.status = normalizeStatus(status);
-    player.cards = buildPlayerCards(player);
+    const requestedStatus = normalizeStatus(status);
+    const sameSelection = player.selected && player.status === requestedStatus;
+
+    if (sameSelection) {
+      player.selected = false;
+      player.cards = [];
+      if (state.selectedCardId && !getSelectedCard()) {
+        state.selectedCardId = null;
+      }
+    } else {
+      player.status = requestedStatus;
+      player.selected = true;
+      player.cards = buildPlayerCards(player);
+    }
 
     save();
     render();
@@ -887,6 +907,8 @@
     if (!plantelViewActive) {
       plantelSnapshot = state.players.map(player => ({
         id: player.id,
+        selected: Boolean(player.selected),
+        status: normalizeStatus(player.status),
         cards: cloneCards(player.cards)
       }));
 
@@ -964,9 +986,9 @@
         <td>${escapeHtml(player.secundaria)}</td>
         <td>
           <div class="actions">
-            <button type="button" data-role="inicial" class="${player.status === "inicial" ? "active" : ""}">Inicial</button>
-            <button type="button" data-role="suplente" class="${player.status === "suplente" ? "active" : ""}">Suplente</button>
-            <button type="button" data-role="reserva" class="${player.status === "reserva" ? "active" : ""}">Reserva</button>
+            <button type="button" data-role="inicial" class="${player.selected && player.status === "inicial" ? "active" : ""}">Inicial</button>
+            <button type="button" data-role="suplente" class="${player.selected && player.status === "suplente" ? "active" : ""}">Suplente</button>
+            <button type="button" data-role="reserva" class="${player.selected && player.status === "reserva" ? "active" : ""}">Reserva</button>
             <button type="button" data-action="delete" title="Eliminar jogador">🗑️</button>
           </div>
         </td>
