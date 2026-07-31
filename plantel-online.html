@@ -120,6 +120,50 @@
     font-size:12px;
   }
 
+  /* ACTIONS_ONLY_V1 */
+  .actions{flex-wrap:wrap}
+
+  .actions button.active{
+    font-weight:700;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.9);
+  }
+
+  .actions [data-role="inicial"].active{
+    background:#e2ebff;
+    border-color:#7791c8;
+  }
+
+  .actions [data-role="suplente"].active{
+    background:#d4af37;
+    border-color:#9a7615;
+    color:#241b00;
+  }
+
+  .actions [data-role="reserva"].active{
+    background:#777f8c;
+    border-color:#555d68;
+    color:#fff;
+  }
+
+  .plantel-bar{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:10px;
+  }
+
+  #plantel{
+    min-width:110px;
+    background:#e2ebff;
+    border-color:#7791c8;
+    font-weight:700;
+  }
+
+  #plantel.active{
+    background:#d4af37;
+    border-color:#9a7615;
+    color:#241b00;
+  }
+
   .legend,.help{
     color:var(--muted);
     font-size:12px;
@@ -240,6 +284,10 @@
       <tbody id="lista"></tbody>
     </table>
 
+    <div class="plantel-bar">
+      <button id="plantel" type="button" aria-pressed="false">Plantel</button>
+    </div>
+
     <div class="legend">
       Abreviaturas reconhecidas: <b>GR, DD, DE, DC, MC, ED, EE e PL</b>.<br>
       Também pode escrever as posições por extenso.
@@ -302,6 +350,8 @@
   let saveTimer = null;
   let saving = false;
   let saveAgain = false;
+  let plantelViewActive = false;
+  let plantelSnapshot = null;
 
   const els = {
     nome: document.getElementById("nome"),
@@ -314,6 +364,7 @@
     partilhar: document.getElementById("partilhar"),
     saveStatus: document.getElementById("saveStatus"),
     limparCampo: document.getElementById("limparCampo"),
+    plantel: document.getElementById("plantel"),
     lista: document.getElementById("lista"),
     campo: document.getElementById("campo")
   };
@@ -395,7 +446,22 @@
     PL: [334, 160]
   };
 
-  function cardColor(position) {
+  function normalizeStatus(value) {
+    const status = String(value || "").toLowerCase();
+    return ["suplente", "reserva"].includes(status) ? status : "inicial";
+  }
+
+  function ensurePlayerShape(player) {
+    player.status = normalizeStatus(player.status);
+    if (!Array.isArray(player.cards)) player.cards = [];
+    return player;
+  }
+
+  function cardColor(position, status) {
+    const normalizedStatus = normalizeStatus(status);
+    if (normalizedStatus === "suplente") return "#d4af37";
+    if (normalizedStatus === "reserva") return "#777f8c";
+
     const pos = normalizePosition(position);
     if (pos === "GR") return "#f0c83f";
     if (["DD", "DE", "DC"].includes(pos)) return "#3f91dc";
@@ -534,7 +600,7 @@
     readDbId();
 
     const local = readLocal();
-    state.players = local.players;
+    state.players = local.players.map(ensurePlayerShape);
     state.updatedAt = local.updatedAt;
     render();
 
@@ -560,7 +626,9 @@
 
       const data = await response.json();
       const remote = {
-        players: Array.isArray(data.players) ? data.players : [],
+        players: Array.isArray(data.players)
+          ? data.players.map(ensurePlayerShape)
+          : [],
         updatedAt: Number(data.updatedAt) || 0
       };
 
@@ -689,6 +757,8 @@
   }
 
   function addPlayer() {
+    if (plantelViewActive) restorePlantelSnapshot(false);
+
     const nome = els.nome.value.trim();
     if (!nome) {
       els.nome.focus();
@@ -702,6 +772,7 @@
       numero: els.numero.value.trim(),
       principal: els.principal.value.trim(),
       secundaria: els.secundaria.value.trim(),
+      status: "inicial",
       cards: []
     });
 
@@ -717,6 +788,8 @@
   }
 
   function removePlayer(playerId) {
+    if (plantelViewActive) restorePlantelSnapshot(false);
+
     state.players = state.players.filter(player => player.id !== playerId);
 
     if (state.selectedCardId && !getSelectedCard()) {
@@ -728,6 +801,9 @@
   }
 
   function clearField() {
+    plantelViewActive = false;
+    plantelSnapshot = null;
+
     state.players.forEach(player => {
       player.cards = [];
     });
@@ -736,12 +812,12 @@
     render();
   }
 
-  function placePlayer(playerId) {
-    const player = state.players.find(item => item.id === playerId);
-    if (!player) return;
+  function cloneCards(cards) {
+    return (Array.isArray(cards) ? cards : []).map(card => ({ ...card }));
+  }
 
-    player.cards = [];
-
+  function buildPlayerCards(player) {
+    const cards = [];
     const positions = [player.principal, player.secundaria];
 
     positions.forEach((label, index) => {
@@ -760,7 +836,7 @@
         y += 20;
       }
 
-      player.cards.push({
+      cards.push({
         id: uid(),
         label: String(label).trim(),
         x,
@@ -771,7 +847,61 @@
       });
     });
 
+    return cards;
+  }
+
+  function restorePlantelSnapshot(shouldSave = true) {
+    if (!plantelViewActive) return;
+
+    const cardsByPlayer = new Map(
+      (plantelSnapshot || []).map(item => [item.id, item.cards])
+    );
+
+    state.players.forEach(player => {
+      if (cardsByPlayer.has(player.id)) {
+        player.cards = cloneCards(cardsByPlayer.get(player.id));
+      }
+    });
+
+    plantelViewActive = false;
+    plantelSnapshot = null;
+    state.selectedCardId = null;
+
+    if (shouldSave) save();
+  }
+
+  function placePlayer(playerId, status) {
+    if (plantelViewActive) restorePlantelSnapshot(false);
+
+    const player = state.players.find(item => item.id === playerId);
+    if (!player) return;
+
+    player.status = normalizeStatus(status);
+    player.cards = buildPlayerCards(player);
+
     save();
+    render();
+  }
+
+  function togglePlantel() {
+    if (!plantelViewActive) {
+      plantelSnapshot = state.players.map(player => ({
+        id: player.id,
+        cards: cloneCards(player.cards)
+      }));
+
+      state.players.forEach(player => {
+        player.status = normalizeStatus(player.status);
+        player.cards = buildPlayerCards(player);
+      });
+
+      plantelViewActive = true;
+      state.selectedCardId = null;
+      render();
+      return;
+    }
+
+    restorePlantelSnapshot(true);
     render();
   }
 
@@ -823,6 +953,8 @@
     els.lista.innerHTML = "";
 
     state.players.forEach(player => {
+      player.status = normalizeStatus(player.status);
+
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${escapeHtml(player.numero)}</td>
@@ -832,14 +964,18 @@
         <td>${escapeHtml(player.secundaria)}</td>
         <td>
           <div class="actions">
-            <button type="button" data-action="field">Campo</button>
+            <button type="button" data-role="inicial" class="${player.status === "inicial" ? "active" : ""}">Inicial</button>
+            <button type="button" data-role="suplente" class="${player.status === "suplente" ? "active" : ""}">Suplente</button>
+            <button type="button" data-role="reserva" class="${player.status === "reserva" ? "active" : ""}">Reserva</button>
             <button type="button" data-action="delete" title="Eliminar jogador">🗑️</button>
           </div>
         </td>
       `;
 
-      row.querySelector('[data-action="field"]').addEventListener("click", () => {
-        placePlayer(player.id);
+      row.querySelectorAll("[data-role]").forEach(button => {
+        button.addEventListener("click", () => {
+          placePlayer(player.id, button.dataset.role);
+        });
       });
 
       row.querySelector('[data-action="delete"]').addEventListener("click", () => {
@@ -848,6 +984,9 @@
 
       els.lista.appendChild(row);
     });
+
+    els.plantel.classList.toggle("active", plantelViewActive);
+    els.plantel.setAttribute("aria-pressed", String(plantelViewActive));
   }
 
   function renderField() {
@@ -887,7 +1026,7 @@
       width: card.width,
       height: card.height,
       rx: 5,
-      fill: cardColor(card.label)
+      fill: cardColor(card.label, player.status)
     });
 
     const text = svgElement("text", {
@@ -1157,6 +1296,7 @@
   els.guardar.addEventListener("click", () => saveOnline(true));
   els.partilhar.addEventListener("click", shareApp);
   els.limparCampo.addEventListener("click", clearField);
+  els.plantel.addEventListener("click", togglePlantel);
 
   [els.nome, els.ano, els.numero, els.principal, els.secundaria].forEach(input => {
     input.addEventListener("keydown", event => {
