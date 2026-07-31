@@ -1,0 +1,1 @@
+Deploy the Football 7 application directly.
