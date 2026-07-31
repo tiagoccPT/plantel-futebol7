@@ -1,0 +1,43 @@
+name: Add inline player editing
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - inline-edit-trigger.txt
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-application:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Add inline editing to the existing application
+        run: python3 tools/apply_inline_player_edit.py
+
+      - name: Verify only the existing application was extended
+        run: |
+          grep -q 'const JSON_BLOB_API = "https://jsonblob.com/api/jsonBlob"' plantel-online.html
+          grep -q 'function togglePlantel()' plantel-online.html
+          grep -q 'INLINE_EDIT_V1' plantel-online.html
+          grep -q 'data-action="edit"' plantel-online.html
+          grep -q 'data-edit-field="numero"' plantel-online.html
+          grep -q 'data-edit-field="nome"' plantel-online.html
+          grep -q 'data-edit-field="ano"' plantel-online.html
+          grep -q 'data-edit-field="principal"' plantel-online.html
+          grep -q 'data-edit-field="secundaria"' plantel-online.html
+
+      - name: Commit updated application
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plantel-online.html
+          git commit -m "Add inline editing for player list fields" || exit 0
+          git push origin HEAD:main
