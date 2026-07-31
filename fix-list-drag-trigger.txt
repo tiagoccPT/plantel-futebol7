@@ -1,0 +1,1 @@
+Apply robust player list dragging fix.
