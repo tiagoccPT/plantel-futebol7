@@ -1,5 +1,6 @@
 name: Deploy Football 7 App
 
+# Trigger deployment after enabling GitHub Actions
 on:
   push:
     branches: [main]
