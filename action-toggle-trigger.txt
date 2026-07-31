@@ -1,0 +1,1 @@
+Apply toggle behaviour to Inicial, Suplente and Reserva buttons.
