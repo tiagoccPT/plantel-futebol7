@@ -1,6 +1,10 @@
 name: Add AV and draggable player list
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - av-list-drag-trigger.txt
   pull_request_target:
     branches: [main]
     paths:
