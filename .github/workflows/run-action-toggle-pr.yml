@@ -1,0 +1,40 @@
+name: Run action toggle update
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - action-toggle-trigger.txt
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Apply only the action toggle change
+        run: python3 tools/apply_action_toggle.py
+
+      - name: Verify requested behaviour
+        run: |
+          grep -q 'const sameSelection = player.selected && player.status === requestedStatus;' plantel-online.html
+          grep -q 'player.selected = false;' plantel-online.html
+          grep -q 'player.selected = true;' plantel-online.html
+          grep -q 'player.selected && player.status === "inicial"' plantel-online.html
+          grep -q 'function togglePlantel()' plantel-online.html
+          grep -q 'const JSON_BLOB_API = "https://jsonblob.com/api/jsonBlob"' plantel-online.html
+
+      - name: Commit the modified application
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plantel-online.html
+          git commit -m "Make action buttons toggle player selection" || exit 0
+          git push origin HEAD:main
