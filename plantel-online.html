@@ -120,6 +120,7 @@
     font-size:12px;
   }
 
+  /* PLANTEL_LAYOUT_MEMORY_V1 */
   /* INLINE_EDIT_V1 */
   .edit-input{
     width:100%;
@@ -478,6 +479,7 @@
   function ensurePlayerShape(player) {
     player.status = normalizeStatus(player.status);
     if (!Array.isArray(player.cards)) player.cards = [];
+    if (!Array.isArray(player.plantelCards)) player.plantelCards = [];
     if (typeof player.selected !== "boolean") {
       player.selected = player.cards.length > 0;
     }
@@ -616,6 +618,7 @@
   }
 
   function save() {
+    if (plantelViewActive) rememberPlantelLayout();
     state.updatedAt = Date.now();
     writeLocal();
     clearTimeout(saveTimer);
@@ -690,6 +693,7 @@
       await ensureRemote();
       setSaveStatus("A guardar online…");
 
+      if (plantelViewActive) rememberPlantelLayout();
       state.updatedAt = Date.now();
       writeLocal();
 
@@ -801,7 +805,8 @@
       secundaria: els.secundaria.value.trim(),
       status: "inicial",
       selected: false,
-      cards: []
+      cards: [],
+      plantelCards: []
     });
 
     els.nome.value = "";
@@ -839,22 +844,13 @@
   }
 
   function preserveEditedCardLayout(player, previousCards) {
-    const rebuiltCards = buildPlayerCards(player);
+    const previousPlantelCards = cloneCards(player.plantelCards);
 
-    player.cards = rebuiltCards.map((card, index) => {
-      const previous = previousCards[index];
-      if (!previous) return card;
+    player.cards = rebuildCardsPreservingLayout(player, previousCards);
 
-      return {
-        ...card,
-        id: previous.id || card.id,
-        x: previous.x,
-        y: previous.y,
-        width: previous.width,
-        height: previous.height,
-        fontSize: previous.fontSize
-      };
-    });
+    if (previousPlantelCards.length > 0) {
+      player.plantelCards = rebuildCardsPreservingLayout(player, previousPlantelCards);
+    }
 
     if (player.selected && player.cards.length === 0) {
       player.selected = false;
@@ -930,6 +926,40 @@
     return (Array.isArray(cards) ? cards : []).map(card => ({ ...card }));
   }
 
+  function rebuildCardsPreservingLayout(player, previousCards) {
+    const rebuiltCards = buildPlayerCards(player);
+    const savedCards = cloneCards(previousCards);
+
+    return rebuiltCards.map((card, index) => {
+      const previous = savedCards[index];
+      if (!previous) return card;
+
+      return {
+        ...card,
+        id: previous.id || card.id,
+        x: Number.isFinite(previous.x) ? previous.x : card.x,
+        y: Number.isFinite(previous.y) ? previous.y : card.y,
+        width: Number.isFinite(previous.width) ? previous.width : card.width,
+        height: Number.isFinite(previous.height) ? previous.height : card.height,
+        fontSize: Number.isFinite(previous.fontSize) ? previous.fontSize : card.fontSize
+      };
+    });
+  }
+
+  function rememberPlantelLayout() {
+    state.players.forEach(player => {
+      player.plantelCards = cloneCards(player.cards);
+    });
+  }
+
+  function buildRememberedPlantelCards(player) {
+    const remembered = Array.isArray(player.plantelCards) && player.plantelCards.length
+      ? player.plantelCards
+      : player.cards;
+
+    return rebuildCardsPreservingLayout(player, remembered);
+  }
+
   function buildPlayerCards(player) {
     const cards = [];
     const positions = [player.principal, player.secundaria];
@@ -966,6 +996,8 @@
 
   function restorePlantelSnapshot(shouldSave = true) {
     if (!plantelViewActive) return;
+
+    rememberPlantelLayout();
 
     const snapshotByPlayer = new Map(
       (plantelSnapshot || []).map(item => [item.id, item])
@@ -1023,7 +1055,7 @@
 
       state.players.forEach(player => {
         player.status = normalizeStatus(player.status);
-        player.cards = buildPlayerCards(player);
+        player.cards = buildRememberedPlantelCards(player);
       });
 
       plantelViewActive = true;
