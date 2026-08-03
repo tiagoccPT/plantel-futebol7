@@ -1,0 +1,29 @@
+name: Fix Flutter numeric types
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - flutter-numeric-fix-trigger.txt
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: python3 tools/fix_flutter_numeric_types.py
+      - run: |
+          grep -q 'clamp(72.0, 400.0).toDouble()' flutter_app/lib/main.dart
+          grep -q 'clamp(8.0, 40.0).toDouble()' flutter_app/lib/main.dart
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart
+          git commit -m "Fix Flutter numeric clamp types" || exit 0
+          git push origin HEAD:main
