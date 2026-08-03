@@ -1,0 +1,1 @@
+Apply silent sync status patch.
