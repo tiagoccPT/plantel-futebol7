@@ -21,9 +21,11 @@ jobs:
       - run: |
           grep -q 'clamp(72.0, 400.0).toDouble()' flutter_app/lib/main.dart
           grep -q 'clamp(8.0, 40.0).toDouble()' flutter_app/lib/main.dart
+          grep -q 'onReorderItem: _reorderPlayers' flutter_app/lib/main.dart
+          grep -q 'math.max(32.0, 36 \* scale).toDouble()' flutter_app/lib/field_widget.dart
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add flutter_app/lib/main.dart
-          git commit -m "Fix Flutter numeric clamp types" || exit 0
+          git add flutter_app/lib/main.dart flutter_app/lib/field_widget.dart
+          git commit -m "Fix Flutter analyzer issues" || exit 0
           git push origin HEAD:main
