@@ -113,8 +113,12 @@ class FootballField extends StatelessWidget {
                           );
                         }
                       }
-                      ..onEnd = (_) => onInteractionEnd()
-                      ..onCancel = onInteractionEnd;
+                      ..onEnd = (_) {
+                        onInteractionEnd();
+                      }
+                      ..onCancel = () {
+                        onInteractionEnd();
+                      };
                   },
                 ),
               },
