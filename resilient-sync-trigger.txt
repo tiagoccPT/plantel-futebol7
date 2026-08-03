@@ -1,0 +1,1 @@
+Apply resilient sync patch.
