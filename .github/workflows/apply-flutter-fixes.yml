@@ -1,0 +1,32 @@
+name: Apply Flutter source fixes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/fix_flutter_numeric_types.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply fixes
+        run: python3 tools/fix_flutter_numeric_types.py
+      - name: Verify
+        run: |
+          grep -q 'onReorderItem: _reorderPlayers' flutter_app/lib/main.dart
+          ! grep -q "import 'dart:convert';" flutter_app/lib/main.dart
+          grep -q 'math.max(32.0, 36 \* scale).toDouble()' flutter_app/lib/field_widget.dart
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/lib/field_widget.dart
+          git commit -m "Fix Flutter analyzer issues" || exit 0
+          git push origin HEAD:main
