@@ -99,7 +99,7 @@ class FootballField extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: math.max(8, card.fontSize * scale),
+                    fontSize: math.max(8.0, card.fontSize * scale),
                     height: 1.05,
                   ),
                   child: Column(
@@ -121,8 +121,8 @@ class FootballField extends StatelessWidget {
             Positioned(
               right: 0,
               bottom: 0,
-              width: math.max(18, 22 * scale),
-              height: math.max(18, 22 * scale),
+              width: math.max(18.0, 22 * scale),
+              height: math.max(18.0, 22 * scale),
               child: GestureDetector(
                 onPanStart: (_) => onSelect(card.id),
                 onPanUpdate: (details) => onResize(
@@ -134,14 +134,14 @@ class FootballField extends StatelessWidget {
                 child: Container(
                   color: Colors.black.withValues(alpha: 0.72),
                   alignment: Alignment.center,
-                  child: Icon(Icons.open_in_full, color: Colors.white, size: math.max(11, 14 * scale)),
+                  child: Icon(Icons.open_in_full, color: Colors.white, size: math.max(11.0, 14 * scale)),
                 ),
               ),
             ),
             if (selected)
               Positioned(
                 right: 0,
-                top: -math.max(32, 36 * scale),
+                top: -math.max(32.0, 36 * scale),
                 child: Row(
                   children: [
                     _fontButton(Icons.text_decrease, () => onFontChange(player.id, card.id, -1)),
