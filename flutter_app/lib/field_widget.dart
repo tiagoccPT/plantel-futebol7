@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'models.dart';
@@ -13,6 +14,8 @@ class FootballField extends StatelessWidget {
     required this.onMove,
     required this.onResize,
     required this.onFontChange,
+    required this.onInteractionStart,
+    required this.onInteractionEnd,
   });
 
   final List<Player> players;
@@ -21,6 +24,8 @@ class FootballField extends StatelessWidget {
   final void Function(String playerId, String cardId, double dx, double dy) onMove;
   final void Function(String playerId, String cardId, double dw, double dh) onResize;
   final void Function(String playerId, String cardId, double delta) onFontChange;
+  final VoidCallback onInteractionStart;
+  final VoidCallback onInteractionEnd;
 
   Color _cardColor(String position, PlayerStatus status) {
     if (status == PlayerStatus.suplente) return const Color(0xFFD4AF37);
@@ -65,93 +70,141 @@ class FootballField extends StatelessWidget {
     final selected = selectedCardId == card.id;
     final cardWidth = card.width * scale;
     final cardHeight = card.height * scale;
+    final handleExtent = math.max(24.0, 28 * scale).toDouble();
 
     return Positioned(
       left: card.x * scale,
       top: card.y * scale,
       width: cardWidth,
       height: cardHeight,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onSelect(card.id),
-        onPanStart: (_) => onSelect(card.id),
-        onPanUpdate: (details) => onMove(
-          player.id,
-          card.id,
-          details.delta.dx / scale,
-          details.delta.dy / scale,
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _cardColor(card.label, player.status),
-                  borderRadius: BorderRadius.circular(5 * scale),
-                  border: Border.all(
-                    color: selected ? const Color(0xFFFF4242) : Colors.black,
-                    width: selected ? math.max(2.0, 4 * scale) : math.max(1.0, 1.5 * scale),
-                  ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: RawGestureDetector(
+              behavior: HitTestBehavior.opaque,
+              gestures: <Type, GestureRecognizerFactory>{
+                _ImmediateDragGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<_ImmediateDragGestureRecognizer>(
+                  () => _ImmediateDragGestureRecognizer(),
+                  (recognizer) {
+                    recognizer
+                      ..onDown = (event) {
+                        recognizer.resizeMode =
+                            event.localPosition.dx >= cardWidth - handleExtent &&
+                            event.localPosition.dy >= cardHeight - handleExtent;
+                        onSelect(card.id);
+                        onInteractionStart();
+                      }
+                      ..onUpdate = (event) {
+                        if (recognizer.resizeMode) {
+                          onResize(
+                            player.id,
+                            card.id,
+                            event.delta.dx / scale,
+                            event.delta.dy / scale,
+                          );
+                        } else {
+                          onMove(
+                            player.id,
+                            card.id,
+                            event.delta.dx / scale,
+                            event.delta.dy / scale,
+                          );
+                        }
+                      }
+                      ..onEnd = (_) => onInteractionEnd()
+                      ..onCancel = onInteractionEnd;
+                  },
                 ),
-                padding: EdgeInsets.fromLTRB(7 * scale, 5 * scale, 22 * scale, 4 * scale),
-                child: DefaultTextStyle(
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: math.max(8.0, card.fontSize * scale),
-                    height: 1.05,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${player.numero.isNotEmpty ? '#${player.numero} ' : ''}${player.nome}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              },
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _cardColor(card.label, player.status),
+                        borderRadius: BorderRadius.circular(5 * scale),
+                        border: Border.all(
+                          color: selected ? const Color(0xFFFF4242) : Colors.black,
+                          width: selected
+                              ? math.max(2.0, 4 * scale)
+                              : math.max(1.0, 1.5 * scale),
+                        ),
                       ),
-                      const SizedBox(height: 1),
-                      Text(card.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
+                      padding: EdgeInsets.fromLTRB(
+                        7 * scale,
+                        5 * scale,
+                        22 * scale,
+                        4 * scale,
+                      ),
+                      child: DefaultTextStyle(
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: math.max(8.0, card.fontSize * scale),
+                          height: 1.05,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${player.numero.isNotEmpty ? '#${player.numero} ' : ''}${player.nome}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              card.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    width: handleExtent,
+                    height: handleExtent,
+                    child: IgnorePointer(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.open_in_full,
+                          color: Colors.white,
+                          size: math.max(11.0, 14 * scale),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
+          if (selected)
             Positioned(
               right: 0,
-              bottom: 0,
-              width: math.max(18.0, 22 * scale),
-              height: math.max(18.0, 22 * scale),
-              child: GestureDetector(
-                onPanStart: (_) => onSelect(card.id),
-                onPanUpdate: (details) => onResize(
-                  player.id,
-                  card.id,
-                  details.delta.dx / scale,
-                  details.delta.dy / scale,
-                ),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.72),
-                  alignment: Alignment.center,
-                  child: Icon(Icons.open_in_full, color: Colors.white, size: math.max(11.0, 14 * scale)),
-                ),
+              top: -math.max(32.0, 36 * scale).toDouble(),
+              child: Row(
+                children: [
+                  _fontButton(
+                    Icons.text_decrease,
+                    () => onFontChange(player.id, card.id, -1),
+                  ),
+                  const SizedBox(width: 3),
+                  _fontButton(
+                    Icons.text_increase,
+                    () => onFontChange(player.id, card.id, 1),
+                  ),
+                ],
               ),
             ),
-            if (selected)
-              Positioned(
-                right: 0,
-                top: -math.max(32.0, 36 * scale).toDouble(),
-                child: Row(
-                  children: [
-                    _fontButton(Icons.text_decrease, () => onFontChange(player.id, card.id, -1)),
-                    const SizedBox(width: 3),
-                    _fontButton(Icons.text_increase, () => onFontChange(player.id, card.id, 1)),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -170,6 +223,61 @@ class FootballField extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ImmediateDragGestureRecognizer extends OneSequenceGestureRecognizer {
+  void Function(PointerDownEvent)? onDown;
+  void Function(PointerMoveEvent)? onUpdate;
+  void Function(PointerUpEvent)? onEnd;
+  VoidCallback? onCancel;
+  bool resizeMode = false;
+  int? _activePointer;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    if (_activePointer != null) return;
+    _activePointer = event.pointer;
+    startTrackingPointer(event.pointer, event.transform);
+    resolve(GestureDisposition.accepted);
+    onDown?.call(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event.pointer != _activePointer) return;
+    if (event is PointerMoveEvent) {
+      onUpdate?.call(event);
+      return;
+    }
+    if (event is PointerUpEvent) {
+      onEnd?.call(event);
+      stopTrackingPointer(event.pointer);
+      _activePointer = null;
+      return;
+    }
+    if (event is PointerCancelEvent) {
+      onCancel?.call();
+      stopTrackingPointer(event.pointer);
+      _activePointer = null;
+    }
+  }
+
+  @override
+  void acceptGesture(int pointer) {}
+
+  @override
+  void rejectGesture(int pointer) {
+    if (pointer != _activePointer) return;
+    onCancel?.call();
+    stopTrackingPointer(pointer);
+    _activePointer = null;
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+
+  @override
+  String get debugDescription => 'immediate card drag';
 }
 
 class _FieldPainter extends CustomPainter {

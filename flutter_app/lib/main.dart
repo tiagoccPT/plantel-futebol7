@@ -77,6 +77,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   bool _saving = false;
   bool _saveAgain = false;
   bool _plantelViewActive = false;
+  /* ANDROID_DRAG_PRIORITY_V1 */
+  bool _dragInteractionActive = false;
   Map<String, _Snapshot>? _plantelSnapshot;
   Timer? _saveTimer;
   Timer? _retryTimer;
@@ -140,6 +142,11 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       _retryTimer = null;
       _saveOnline();
     });
+  }
+
+  void _setDragInteraction(bool active) {
+    if (!mounted || _dragInteractionActive == active) return;
+    setState(() => _dragInteractionActive = active);
   }
 
   void _rememberPlantelLayout() {
@@ -593,6 +600,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                   );
                 }
                 return ListView(
+                  physics: _dragInteractionActive
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
                   padding: const EdgeInsets.all(9),
                   children: [
                     SizedBox(height: 720, child: _leftPanel()),
@@ -639,6 +649,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                 buildDefaultDragHandles: false,
                 itemCount: _data.players.length,
                 onReorderItem: _reorderPlayers,
+                onReorderStart: (_) => _setDragInteraction(true),
+                onReorderEnd: (_) => _setDragInteraction(false),
                 itemBuilder: (context, index) => _playerRow(_data.players[index], index),
               ),
             ),
@@ -774,6 +786,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: SingleChildScrollView(
+          physics: _dragInteractionActive
+              ? const NeverScrollableScrollPhysics()
+              : null,
           child: Column(
             children: [
               const Align(
@@ -791,6 +806,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                 onMove: _moveCard,
                 onResize: _resizeCard,
                 onFontChange: _fontChange,
+                onInteractionStart: () => _setDragInteraction(true),
+                onInteractionEnd: () => _setDragInteraction(false),
               ),
             ],
           ),
