@@ -1,6 +1,7 @@
 import 'dart:math';
 
-String uid() => '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${Random().nextInt(1 << 32).toRadixString(36)}';
+String uid() =>
+    '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${Random().nextInt(1 << 32).toRadixString(36)}';
 
 enum PlayerStatus { inicial, suplente, reserva }
 
@@ -182,7 +183,8 @@ class Player {
       principal: (json['principal'] ?? '').toString(),
       secundaria: (json['secundaria'] ?? '').toString(),
       status: statusFromString(json['status']?.toString()),
-      selected: json['selected'] is bool ? json['selected'] as bool : cards.isNotEmpty,
+      selected:
+          json['selected'] is bool ? json['selected'] as bool : cards.isNotEmpty,
       cards: cards,
       plantelCards: plantelCards,
     );
@@ -202,25 +204,191 @@ class Player {
       };
 }
 
+class TacticPlayerState {
+  TacticPlayerState({
+    required this.playerId,
+    required this.status,
+    required this.selected,
+    List<CardData>? cards,
+  }) : cards = cards ?? <CardData>[];
+
+  String playerId;
+  PlayerStatus status;
+  bool selected;
+  List<CardData> cards;
+
+  factory TacticPlayerState.fromPlayer(Player player) => TacticPlayerState(
+        playerId: player.id,
+        status: player.status,
+        selected: player.selected,
+        cards: player.cards.map((e) => e.clone()).toList(),
+      );
+
+  factory TacticPlayerState.fromJson(Map<String, dynamic> json) =>
+      TacticPlayerState(
+        playerId: (json['playerId'] ?? '').toString(),
+        status: statusFromString(json['status']?.toString()),
+        selected: json['selected'] == true,
+        cards: ((json['cards'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((e) => CardData.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+
+  TacticPlayerState clone() => TacticPlayerState(
+        playerId: playerId,
+        status: status,
+        selected: selected,
+        cards: cards.map((e) => e.clone()).toList(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'playerId': playerId,
+        'status': statusToString(status),
+        'selected': selected,
+        'cards': cards.map((e) => e.toJson()).toList(),
+      };
+}
+
+class TacticData {
+  TacticData({
+    required this.id,
+    required this.name,
+    List<TacticPlayerState>? playerStates,
+  }) : playerStates = playerStates ?? <TacticPlayerState>[];
+
+  String id;
+  String name;
+  List<TacticPlayerState> playerStates;
+
+  factory TacticData.fromPlayers({
+    required String name,
+    required List<Player> players,
+  }) =>
+      TacticData(
+        id: uid(),
+        name: name,
+        playerStates:
+            players.map(TacticPlayerState.fromPlayer).toList(growable: true),
+      );
+
+  factory TacticData.fromJson(Map<String, dynamic> json) => TacticData(
+        id: (json['id'] ?? uid()).toString(),
+        name: (json['name'] ?? 'Tática').toString(),
+        playerStates: ((json['playerStates'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((e) =>
+                TacticPlayerState.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+
+  TacticData duplicate(String newName) => TacticData(
+        id: uid(),
+        name: newName,
+        playerStates: playerStates.map((e) => e.clone()).toList(),
+      );
+
+  void capture(List<Player> players) {
+    playerStates =
+        players.map(TacticPlayerState.fromPlayer).toList(growable: true);
+  }
+
+  void apply(List<Player> players) {
+    final byId = <String, TacticPlayerState>{
+      for (final state in playerStates) state.playerId: state,
+    };
+    for (final player in players) {
+      final state = byId[player.id];
+      if (state == null) {
+        player.status = PlayerStatus.inicial;
+        player.selected = false;
+        player.cards = <CardData>[];
+        continue;
+      }
+      player.status = state.status;
+      player.selected = state.selected;
+      player.cards = state.cards.map((e) => e.clone()).toList();
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'playerStates': playerStates.map((e) => e.toJson()).toList(),
+      };
+}
+
 class PlantelStateData {
-  PlantelStateData({required this.players, required this.updatedAt});
+  PlantelStateData({
+    required this.players,
+    required this.updatedAt,
+    required this.tactics,
+    required this.activeTacticId,
+  });
 
   List<Player> players;
   int updatedAt;
+  List<TacticData> tactics;
+  String activeTacticId;
 
-  factory PlantelStateData.empty() => PlantelStateData(players: [], updatedAt: 0);
+  factory PlantelStateData.empty() {
+    final tactic = TacticData(id: uid(), name: 'Tática 1');
+    return PlantelStateData(
+      players: <Player>[],
+      updatedAt: 0,
+      tactics: <TacticData>[tactic],
+      activeTacticId: tactic.id,
+    );
+  }
 
-  factory PlantelStateData.fromJson(Map<String, dynamic> json) => PlantelStateData(
-        players: ((json['players'] as List?) ?? const [])
-            .whereType<Map>()
-            .map((e) => Player.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-        updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
-      );
+  factory PlantelStateData.fromJson(Map<String, dynamic> json) {
+    final players = ((json['players'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Player.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    var tactics = ((json['tactics'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => TacticData.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    var activeTacticId = (json['activeTacticId'] ?? '').toString();
+
+    // Migração transparente: a disposição atual passa a Tática 1.
+    if (tactics.isEmpty) {
+      final first = TacticData.fromPlayers(name: 'Tática 1', players: players);
+      tactics = <TacticData>[first];
+      activeTacticId = first.id;
+    }
+
+    if (!tactics.any((t) => t.id == activeTacticId)) {
+      activeTacticId = tactics.first.id;
+    }
+
+    final data = PlantelStateData(
+      players: players,
+      updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
+      tactics: tactics,
+      activeTacticId: activeTacticId,
+    );
+
+    if (json['tactics'] is List) {
+      data.activeTactic.apply(data.players);
+    }
+
+    return data;
+  }
+
+  TacticData get activeTactic =>
+      tactics.firstWhere((t) => t.id == activeTacticId,
+          orElse: () => tactics.first);
 
   Map<String, dynamic> toJson() => {
         'players': players.map((e) => e.toJson()).toList(),
         'updatedAt': updatedAt,
+        'tactics': tactics.map((e) => e.toJson()).toList(),
+        'activeTacticId': activeTacticId,
+        'schemaVersion': 2,
       };
 }
 
@@ -251,7 +419,10 @@ List<CardData> buildPlayerCards(Player player) {
   return cards;
 }
 
-List<CardData> rebuildCardsPreservingLayout(Player player, List<CardData> previous) {
+List<CardData> rebuildCardsPreservingLayout(
+  Player player,
+  List<CardData> previous,
+) {
   final rebuilt = buildPlayerCards(player);
   return List.generate(rebuilt.length, (index) {
     final card = rebuilt[index];
