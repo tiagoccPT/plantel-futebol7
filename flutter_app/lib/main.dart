@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -403,7 +402,6 @@ class _PlantelHomePageState extends State<PlantelHomePage>
 
   void _reorderPlayers(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
       final player = _data.players.removeAt(oldIndex);
       _data.players.insert(newIndex, player);
     });
@@ -640,7 +638,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
               child: ReorderableListView.builder(
                 buildDefaultDragHandles: false,
                 itemCount: _data.players.length,
-                onReorder: _reorderPlayers,
+                onReorderItem: _reorderPlayers,
                 itemBuilder: (context, index) => _playerRow(_data.players[index], index),
               ),
             ),

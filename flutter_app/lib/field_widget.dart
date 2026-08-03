@@ -141,7 +141,7 @@ class FootballField extends StatelessWidget {
             if (selected)
               Positioned(
                 right: 0,
-                top: -math.max(32.0, 36 * scale),
+                top: -math.max(32.0, 36 * scale).toDouble(),
                 child: Row(
                   children: [
                     _fontButton(Icons.text_decrease, () => onFontChange(player.id, card.id, -1)),
