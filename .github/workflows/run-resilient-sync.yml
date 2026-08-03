@@ -1,14 +1,13 @@
 name: Apply resilient online sync
 
 on:
-  pull_request_target:
+  push:
     branches: [main]
     paths:
-      - resilient-sync-trigger.txt
+      - tools/fix_resilient_sync.py
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   update-application:
