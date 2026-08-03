@@ -399,6 +399,10 @@
   let plantelViewActive = false;
   let plantelSnapshot = null;
   let editingPlayerId = null;
+  /* RESILIENT_SYNC_V1 */
+  let retryTimer = null;
+  let retryDelay = 2000;
+  let syncPending = false;
 
   const els = {
     nome: document.getElementById("nome"),
@@ -640,12 +644,32 @@
     setSaveStatus("Armazenamento online criado.");
   }
 
+  function clearRetry() {
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+
+  function scheduleRetry(delay = retryDelay) {
+    syncPending = true;
+    clearRetry();
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      saveOnline(false);
+    }, delay);
+    retryDelay = Math.min(Math.max(2000, retryDelay * 1.8), 30000);
+  }
+
+  function markPending(message = "Guardado neste dispositivo — a sincronizar automaticamente…") {
+    syncPending = true;
+    setSaveStatus(message, false);
+  }
+
   function save() {
     if (plantelViewActive) rememberPlantelLayout();
     state.updatedAt = Date.now();
     writeLocal();
     clearTimeout(saveTimer);
-    setSaveStatus("Alterações por guardar…");
+    markPending();
     saveTimer = setTimeout(() => saveOnline(false), 700);
   }
 
@@ -699,7 +723,8 @@
     } catch (error) {
       console.error(error);
       remoteReady = false;
-      setSaveStatus("Sem ligação online. As alterações ficaram neste dispositivo.", true);
+      markPending("Plantel disponível neste dispositivo — sincronização pendente.");
+      scheduleRetry();
     }
   }
 
@@ -737,6 +762,9 @@
       }
 
       remoteReady = true;
+      syncPending = false;
+      retryDelay = 2000;
+      clearRetry();
 
       const time = new Date().toLocaleTimeString("pt-PT", {
         hour: "2-digit",
@@ -748,19 +776,16 @@
     } catch (error) {
       console.error(error);
       remoteReady = false;
-      setSaveStatus("Erro ao guardar online.", true);
-
-      if (manual) {
-        alert(
-          "Não foi possível guardar online. As alterações continuam guardadas neste dispositivo."
-        );
-      }
+      markPending("Guardado neste dispositivo — sincronização pendente.");
+      scheduleRetry();
     } finally {
       saving = false;
 
       if (saveAgain) {
         saveAgain = false;
         saveTimer = setTimeout(() => saveOnline(false), 150);
+      } else if (syncPending && !retryTimer) {
+        scheduleRetry();
       }
     }
   }
@@ -1615,6 +1640,22 @@
 
     return group;
   }
+
+  window.addEventListener("online", () => {
+    if (syncPending) {
+      retryDelay = 2000;
+      clearRetry();
+      saveOnline(false);
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (syncPending && !saving) saveOnline(false);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && syncPending && !saving) saveOnline(false);
+  });
 
   els.adicionar.addEventListener("click", addPlayer);
   els.guardar.addEventListener("click", () => saveOnline(true));
