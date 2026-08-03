@@ -414,8 +414,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     final card = _findCard(playerId, cardId);
     if (card == null) return;
     setState(() {
-      card.x = (card.x + dx).clamp(20.0, 780.0 - card.width);
-      card.y = (card.y + dy).clamp(20.0, 1080.0 - card.height);
+      card.x = (card.x + dx).clamp(20.0, 780.0 - card.width).toDouble();
+      card.y = (card.y + dy).clamp(20.0, 1080.0 - card.height).toDouble();
     });
     _changed(debounce: true);
   }
@@ -424,10 +424,10 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     final card = _findCard(playerId, cardId);
     if (card == null) return;
     setState(() {
-      card.width = (card.width + dw).clamp(72.0, 400.0);
-      card.height = (card.height + dh).clamp(38.0, 220.0);
-      card.x = card.x.clamp(20.0, 780.0 - card.width);
-      card.y = card.y.clamp(20.0, 1080.0 - card.height);
+      card.width = (card.width + dw).clamp(72.0, 400.0).toDouble();
+      card.height = (card.height + dh).clamp(38.0, 220.0).toDouble();
+      card.x = card.x.clamp(20.0, 780.0 - card.width).toDouble();
+      card.y = card.y.clamp(20.0, 1080.0 - card.height).toDouble();
     });
     _changed(debounce: true);
   }
@@ -435,7 +435,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   void _fontChange(String playerId, String cardId, double delta) {
     final card = _findCard(playerId, cardId);
     if (card == null) return;
-    setState(() => card.fontSize = (card.fontSize + delta).clamp(8.0, 40.0));
+    setState(() => card.fontSize = (card.fontSize + delta).clamp(8.0, 40.0).toDouble());
     _changed();
   }
 
