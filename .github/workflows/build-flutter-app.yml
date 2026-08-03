@@ -6,6 +6,11 @@ on:
     paths:
       - 'flutter_app/**'
       - '.github/workflows/build-flutter-app.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/build-flutter-app.yml'
   workflow_dispatch:
 
 permissions:
