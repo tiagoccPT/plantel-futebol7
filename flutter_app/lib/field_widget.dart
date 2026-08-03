@@ -29,12 +29,12 @@ class FootballField extends StatelessWidget {
 
   Color _cardColor(String position, PlayerStatus status) {
     if (status == PlayerStatus.suplente) return const Color(0xFFD4AF37);
-    if (status == PlayerStatus.reserva) return const Color(0xFF777F8C);
+    if (status == PlayerStatus.reserva) return const Color(0xFF6B7280);
     final pos = normalizePosition(position);
-    if (pos == 'GR') return const Color(0xFFF0C83F);
-    if (['DD', 'DE', 'DC'].contains(pos)) return const Color(0xFF3F91DC);
-    if (pos == 'MC') return const Color(0xFF54A85C);
-    return const Color(0xFFED8434);
+    if (pos == 'GR') return const Color(0xFFF3B21A);
+    if (['DD', 'DE', 'DC'].contains(pos)) return const Color(0xFF1976D2);
+    if (pos == 'MC') return const Color(0xFF2F9347);
+    return const Color(0xFFE8792E);
   }
 
   @override
@@ -46,9 +46,19 @@ class FootballField extends StatelessWidget {
         final scale = width / 800;
 
         return Center(
-          child: SizedBox(
+          child: Container(
             width: width,
             height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16 * scale),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 18 * scale,
+                  offset: Offset(0, 7 * scale),
+                ),
+              ],
+            ),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -66,7 +76,12 @@ class FootballField extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(BuildContext context, Player player, CardData card, double scale) {
+  Widget _buildCard(
+    BuildContext context,
+    Player player,
+    CardData card,
+    double scale,
+  ) {
     final selected = selectedCardId == card.id;
     final cardWidth = card.width * scale;
     final cardHeight = card.height * scale;
@@ -85,14 +100,17 @@ class FootballField extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               gestures: <Type, GestureRecognizerFactory>{
                 _ImmediateDragGestureRecognizer:
-                    GestureRecognizerFactoryWithHandlers<_ImmediateDragGestureRecognizer>(
+                    GestureRecognizerFactoryWithHandlers<
+                        _ImmediateDragGestureRecognizer>(
                   () => _ImmediateDragGestureRecognizer(),
                   (recognizer) {
                     recognizer
                       ..onDown = (event) {
                         recognizer.resizeMode =
-                            event.localPosition.dx >= cardWidth - handleExtent &&
-                            event.localPosition.dy >= cardHeight - handleExtent;
+                            event.localPosition.dx >=
+                                    cardWidth - handleExtent &&
+                                event.localPosition.dy >=
+                                    cardHeight - handleExtent;
                         onSelect(card.id);
                         onInteractionStart();
                       }
@@ -128,16 +146,25 @@ class FootballField extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color: _cardColor(card.label, player.status),
-                        borderRadius: BorderRadius.circular(5 * scale),
+                        borderRadius: BorderRadius.circular(8 * scale),
                         border: Border.all(
-                          color: selected ? const Color(0xFFFF4242) : Colors.black,
+                          color: selected
+                              ? const Color(0xFFFF4242)
+                              : const Color(0xFF07101C),
                           width: selected
                               ? math.max(2.0, 4 * scale)
-                              : math.max(1.0, 1.5 * scale),
+                              : math.max(1.0, 1.4 * scale),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.24),
+                            blurRadius: 5 * scale,
+                            offset: Offset(0, 2 * scale),
+                          ),
+                        ],
                       ),
                       padding: EdgeInsets.fromLTRB(
-                        7 * scale,
+                        8 * scale,
                         5 * scale,
                         22 * scale,
                         4 * scale,
@@ -176,7 +203,14 @@ class FootballField extends StatelessWidget {
                     height: handleExtent,
                     child: IgnorePointer(
                       child: Container(
-                        color: Colors.black.withValues(alpha: 0.72),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF07101C)
+                              .withValues(alpha: 0.76),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(6 * scale),
+                            bottomRight: Radius.circular(7 * scale),
+                          ),
+                        ),
                         alignment: Alignment.center,
                         child: Icon(
                           Icons.open_in_full,
@@ -215,14 +249,14 @@ class FootballField extends StatelessWidget {
 
   Widget _fontButton(IconData icon, VoidCallback onPressed) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(5),
+      color: const Color(0xFFF4F7FB),
+      borderRadius: BorderRadius.circular(7),
       child: InkWell(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(7),
         onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.all(5),
-          child: Icon(icon, color: Colors.black87, size: 18),
+          child: Icon(icon, color: const Color(0xFF0B1220), size: 18),
         ),
       ),
     );
@@ -289,31 +323,57 @@ class _FieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final sx = size.width / 800;
     final sy = size.height / 1100;
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4 * sx;
-    final fill = Paint()..color = const Color(0xFF2F7D35);
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(12 * sx)),
-      fill,
+    final pitch = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(15 * sx),
     );
 
-    Rect r(double x, double y, double w, double h) => Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
+    canvas.save();
+    canvas.clipRRect(pitch);
+    canvas.drawRRect(pitch, Paint()..color = const Color(0xFF1E7D32));
+
+    final stripePaint = Paint()..color = const Color(0xFF238A38);
+    final stripeHeight = size.height / 10;
+    for (var i = 0; i < 10; i += 2) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, i * stripeHeight, size.width, stripeHeight),
+        stripePaint,
+      );
+    }
+
+    final vignette = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0x10000000), Color(0x00000000), Color(0x18000000)],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, vignette);
+    canvas.restore();
+
+    final linePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.90)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2 * sx;
+
+    Rect r(double x, double y, double w, double h) =>
+        Rect.fromLTWH(x * sx, y * sy, w * sx, h * sy);
     Offset p(double x, double y) => Offset(x * sx, y * sy);
 
-    canvas.drawRect(r(20, 20, 760, 1060), paint);
-    canvas.drawRect(r(340, 0, 120, 20), paint);
-    canvas.drawRect(r(340, 1080, 120, 20), paint);
-    canvas.drawLine(p(20, 550), p(780, 550), paint);
-    canvas.drawCircle(p(400, 550), 80 * sx, paint);
-    canvas.drawRect(r(200, 20, 400, 180), paint);
-    canvas.drawRect(r(300, 20, 200, 70), paint);
-    canvas.drawRect(r(200, 900, 400, 180), paint);
-    canvas.drawRect(r(300, 1010, 200, 70), paint);
+    canvas.drawRRect(pitch, Paint()
+      ..color = const Color(0xFF0B1220)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 * sx);
+    canvas.drawRect(r(20, 20, 760, 1060), linePaint);
+    canvas.drawRect(r(340, 0, 120, 20), linePaint);
+    canvas.drawRect(r(340, 1080, 120, 20), linePaint);
+    canvas.drawLine(p(20, 550), p(780, 550), linePaint);
+    canvas.drawCircle(p(400, 550), 80 * sx, linePaint);
+    canvas.drawRect(r(200, 20, 400, 180), linePaint);
+    canvas.drawRect(r(300, 20, 200, 70), linePaint);
+    canvas.drawRect(r(200, 900, 400, 180), linePaint);
+    canvas.drawRect(r(300, 1010, 200, 70), linePaint);
 
-    final dot = Paint()..color = Colors.white;
+    final dot = Paint()..color = Colors.white.withValues(alpha: 0.94);
     canvas.drawCircle(p(400, 550), 4.5 * sx, dot);
     canvas.drawCircle(p(400, 140), 4.5 * sx, dot);
     canvas.drawCircle(p(400, 960), 4.5 * sx, dot);
