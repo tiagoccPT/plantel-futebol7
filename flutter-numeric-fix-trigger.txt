@@ -1,1 +1,1 @@
-Apply Flutter numeric clamp fixes.
+Apply extended Flutter analyzer fixes.
