@@ -659,9 +659,10 @@
     retryDelay = Math.min(Math.max(2000, retryDelay * 1.8), 30000);
   }
 
-  function markPending(message = "Guardado neste dispositivo — a sincronizar automaticamente…") {
+  /* SILENT_SYNC_STATUS_V1 */
+  function markPending(message = "Guardado") {
     syncPending = true;
-    setSaveStatus(message, false);
+    setSaveStatus("Guardado", false);
   }
 
   function save() {
@@ -723,7 +724,7 @@
     } catch (error) {
       console.error(error);
       remoteReady = false;
-      markPending("Plantel disponível neste dispositivo — sincronização pendente.");
+      markPending();
       scheduleRetry();
     }
   }
@@ -739,7 +740,7 @@
 
     try {
       await ensureRemote();
-      setSaveStatus("A guardar online…");
+      if (manual) setSaveStatus("A guardar online…");
 
       if (plantelViewActive) rememberPlantelLayout();
       state.updatedAt = Date.now();
@@ -776,7 +777,7 @@
     } catch (error) {
       console.error(error);
       remoteReady = false;
-      markPending("Guardado neste dispositivo — sincronização pendente.");
+      markPending();
       scheduleRetry();
     } finally {
       saving = false;
