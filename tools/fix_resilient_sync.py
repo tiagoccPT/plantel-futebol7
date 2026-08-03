@@ -150,3 +150,5 @@ for item in required:
         raise RuntimeError(f'missing marker: {item}')
 
 path.write_text(text, encoding='utf-8')
+
+# workflow trigger
