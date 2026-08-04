@@ -1,0 +1,28 @@
+name: Diagnose JSONBlob
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'diagnose-jsonblob-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check configured JSONBlob
+        shell: bash
+        run: |
+          set +e
+          URL='https://jsonblob.com/api/jsonBlob/019fb865-7007-7bb3-9f93-68f50bf7daa6'
+          echo "GET $URL"
+          curl -sS -D /tmp/headers.txt -o /tmp/body.txt -w 'HTTP_STATUS=%{http_code}\n' \
+            -H 'Accept: application/json' "$URL"
+          echo '--- headers ---'
+          cat /tmp/headers.txt
+          echo '--- body first 1000 bytes ---'
+          head -c 1000 /tmp/body.txt || true
+          echo
