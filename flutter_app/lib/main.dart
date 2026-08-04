@@ -108,18 +108,23 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   int _sectionIndex = 0;
   bool _loading = true;
   bool _saving = false;
+  bool _syncing = false;
   bool _saveAgain = false;
   bool _plantelViewActive = false;
   bool _dragInteractionActive = false;
   Map<String, _Snapshot>? _plantelSnapshot;
   Timer? _saveTimer;
   Timer? _retryTimer;
+  Timer? _syncTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _load();
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_loading) unawaited(_syncFromRemote());
+    });
   }
 
   @override
@@ -127,6 +132,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     WidgetsBinding.instance.removeObserver(this);
     _saveTimer?.cancel();
     _retryTimer?.cancel();
+    _syncTimer?.cancel();
     _nome.dispose();
     _ano.dispose();
     _numero.dispose();
@@ -137,7 +143,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _saveOnline();
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncFromRemote(showStatus: true));
+    }
   }
 
   void _ensureTactics() {
@@ -191,10 +199,54 @@ class _PlantelHomePageState extends State<PlantelHomePage>
 
   void _scheduleRetry() {
     _retryTimer?.cancel();
-    _retryTimer = Timer(const Duration(seconds: 15), () {
+    _retryTimer = Timer(const Duration(seconds: 15), () async {
       _retryTimer = null;
-      _saveOnline();
+      final receivedNewer = await _syncFromRemote();
+      if (!receivedNewer && !(_saveTimer?.isActive ?? false)) {
+        unawaited(_saveOnline());
+      }
     });
+  }
+
+  Future<bool> _syncFromRemote({bool showStatus = false}) async {
+    if (_loading ||
+        _syncing ||
+        _saving ||
+        _dragInteractionActive ||
+        _plantelViewActive ||
+        (_saveTimer?.isActive ?? false)) {
+      return false;
+    }
+
+    _syncing = true;
+    try {
+      final remote = await _storage.loadRemote();
+      if (remote.updatedAt <= _data.updatedAt) {
+        if (showStatus && mounted) {
+          setState(() => _saveStatus = 'Plantel online sincronizado');
+        }
+        return false;
+      }
+
+      _data = remote;
+      _ensureTactics();
+      _activeTactic.apply(_data.players);
+      _selectedCardId = null;
+      await _storage.saveLocal(_data);
+
+      if (mounted) {
+        final t = TimeOfDay.now().format(context);
+        setState(() => _saveStatus = 'Atualizado de outro dispositivo às $t');
+      }
+      return true;
+    } catch (_) {
+      if (showStatus && mounted) {
+        setState(() => _saveStatus = 'Guardado');
+      }
+      return false;
+    } finally {
+      _syncing = false;
+    }
   }
 
   void _setDragInteraction(bool active) {
@@ -248,8 +300,30 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     _retryTimer?.cancel();
     try {
       await _persistLocal();
-      if (manual && mounted) setState(() => _saveStatus = 'A guardar online…');
-      await _storage.saveRemote(_data);
+      if (manual && mounted) {
+        setState(() => _saveStatus = 'A sincronizar online…');
+      }
+
+      // Antes de gravar, confirmar sempre se outro dispositivo já publicou
+      // uma versão mais recente. Isto evita que dados antigos a sobrescrevam.
+      final remote = await _storage.loadRemote();
+      if (remote.updatedAt > _data.updatedAt) {
+        _data = remote;
+        _ensureTactics();
+        _activeTactic.apply(_data.players);
+        _selectedCardId = null;
+        await _storage.saveLocal(_data);
+        if (mounted) {
+          final t = TimeOfDay.now().format(context);
+          setState(() => _saveStatus = 'Atualizado de outro dispositivo às $t');
+        }
+        return true;
+      }
+
+      if (remote.updatedAt < _data.updatedAt) {
+        await _storage.saveRemote(_data);
+      }
+
       if (mounted) {
         final t = TimeOfDay.now().format(context);
         setState(() => _saveStatus = 'Guardado online às $t');
