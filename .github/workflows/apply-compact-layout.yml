@@ -33,3 +33,5 @@ jobs:
           git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
           git commit -m "Compactar plantel, campo e barras de suplentes e reservas"
           git push origin main
+
+# trigger: 2026-08-04
