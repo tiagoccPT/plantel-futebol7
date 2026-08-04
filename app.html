@@ -157,7 +157,7 @@ const replacement=`  let storageUri="",remoteReady=false;
   function escapeHtml(value) {`;
 
 try{
-  const r=await fetch("https://raw.githubusercontent.com/tiagoccPT/plantel-futebol7/main/index.html?"+Date.now(),{cache:"no-store"});
+  const r=await fetch("https://raw.githubusercontent.com/tiagoccPT/plantel-futebol7/main/source.html?"+Date.now(),{cache:"no-store"});
   if(!r.ok)throw Error("Não foi possível carregar a aplicação.");
   const s=await r.text(),x=s.match(/const DATA='([^']+)'/);
   if(!x)throw Error("Dados da aplicação não encontrados.");
