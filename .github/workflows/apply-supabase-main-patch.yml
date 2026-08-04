@@ -1,0 +1,27 @@
+name: Apply Supabase main patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase-main-patch-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: python3 tools/apply_supabase_main_patch.py
+      - name: Commit patched main.dart
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flutter_app/lib/main.dart
+          git diff --cached --quiet && exit 0
+          git commit -m 'Adaptar interface ao backend Supabase'
+          git push
