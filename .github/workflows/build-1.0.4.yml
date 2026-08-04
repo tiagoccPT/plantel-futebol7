@@ -1,0 +1,67 @@
+name: Build Android and Windows 1.0.4
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'build-1.0.4-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android platform files
+        working-directory: flutter_app
+        run: flutter create --platforms=android .
+      - name: Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+      - name: Test
+        working-directory: flutter_app
+        run: flutter test
+      - name: Build Android APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Plantel_Futebol7_Android_1.0.4
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Windows platform files
+        working-directory: flutter_app
+        run: flutter create --platforms=windows .
+      - name: Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+      - name: Test
+        working-directory: flutter_app
+        run: flutter test
+      - name: Build Windows
+        working-directory: flutter_app
+        run: flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Plantel_Futebol7_Windows_1.0.4
+          path: flutter_app/build/windows/x64/runner/Release/**
