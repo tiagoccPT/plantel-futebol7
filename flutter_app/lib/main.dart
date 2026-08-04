@@ -853,12 +853,15 @@ class _PlantelHomePageState extends State<PlantelHomePage>
         ),
       );
     }
+    final mobilePanelHeight = _data.players.isEmpty
+        ? 330.0
+        : (_data.players.length <= 3 ? 410.0 : 520.0);
     return ListView(
       physics: _dragInteractionActive ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.all(9),
       children: [
-        SizedBox(height: 620, child: _leftPanel()),
-        const SizedBox(height: 10),
+        SizedBox(height: mobilePanelHeight, child: _leftPanel()),
+        const SizedBox(height: 8),
         _fieldPanel(),
       ],
     );
@@ -894,9 +897,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _form(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Expanded(
               child: ReorderableListView.builder(
                 buildDefaultDragHandles: false,
@@ -919,24 +922,56 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   }
 
   Widget _form() {
-    Widget field(TextEditingController c, String hint, {double width = 145}) => SizedBox(
-          width: width,
-          child: TextField(
-            controller: c,
-            decoration: InputDecoration(hintText: hint, isDense: true),
-            onSubmitted: (_) => _addPlayer(),
+    final compact = MediaQuery.sizeOf(context).width < 600;
+
+    Widget field(
+      TextEditingController controller,
+      String hint, {
+      required double mobileWidth,
+      required double desktopWidth,
+    }) {
+      return SizedBox(
+        width: compact ? mobileWidth : desktopWidth,
+        height: compact ? 38 : 42,
+        child: TextField(
+          controller: controller,
+          style: TextStyle(fontSize: compact ? 13 : 14),
+          decoration: InputDecoration(
+            hintText: hint,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: compact ? 10 : 11,
+              vertical: compact ? 8 : 9,
+            ),
           ),
-        );
+          onSubmitted: (_) => _addPlayer(),
+        ),
+      );
+    }
+
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 4 : 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        field(_nome, 'Nome do jogador', width: 180),
-        field(_ano, 'Ano', width: 90),
-        field(_numero, 'N.º', width: 74),
-        field(_principal, 'Posição principal', width: 140),
-        field(_secundaria, 'Posição secundária', width: 145),
-        FilledButton.icon(onPressed: _addPlayer, icon: const Icon(Icons.person_add_alt_1, size: 17), label: const Text('Adicionar')),
+        field(_nome, 'Nome do jogador', mobileWidth: 150, desktopWidth: 180),
+        field(_ano, 'Ano', mobileWidth: 72, desktopWidth: 90),
+        field(_numero, 'N.º', mobileWidth: 58, desktopWidth: 74),
+        field(_principal, 'Posição principal', mobileWidth: 120, desktopWidth: 140),
+        field(_secundaria, 'Posição secundária', mobileWidth: 126, desktopWidth: 145),
+        SizedBox(
+          height: compact ? 38 : 42,
+          child: FilledButton.icon(
+            onPressed: _addPlayer,
+            style: FilledButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 15),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Icon(Icons.person_add_alt_1, size: compact ? 15 : 17),
+            label: Text('Adicionar', style: TextStyle(fontSize: compact ? 13 : 14)),
+          ),
+        ),
       ],
     );
   }
