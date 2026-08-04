@@ -1,0 +1,84 @@
+name: Verify Supabase
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'verify-supabase-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify read and write access
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://hzhplnxrnqiejfrnmksr.supabase.co/rest/v1/plantel_state'
+          KEY='sb_publishable_n2VlIKJp5I7DBo8PE9SYQA_xjwn2izV'
+          ID='019fb865-7007-7bb3-9f93-68f50bf7daa6'
+
+          echo 'GET current row'
+          curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.json \
+            -H "apikey: $KEY" \
+            -H 'Accept: application/json' \
+            "$BASE?plantel_id=eq.$ID&select=plantel_id,payload,updated_at_ms&limit=1"
+          cat /tmp/get_headers.txt
+          cat /tmp/get_body.json
+          echo
+
+          python3 - <<'PY'
+import json,sys
+rows=json.load(open('/tmp/get_body.json'))
+if not isinstance(rows,list) or len(rows)!=1:
+    print('ERROR: expected exactly one row', file=sys.stderr)
+    sys.exit(2)
+row=rows[0]
+if row.get('plantel_id')!='019fb865-7007-7bb3-9f93-68f50bf7daa6':
+    print('ERROR: wrong plantel_id', file=sys.stderr)
+    sys.exit(3)
+json.dump({
+    'plantel_id': row['plantel_id'],
+    'payload': row['payload'],
+    'updated_at_ms': row.get('updated_at_ms',0),
+}, open('/tmp/same_row.json','w'))
+print('READ_OK')
+PY
+
+          echo 'UPSERT same row'
+          curl -sS -D /tmp/post_headers.txt -o /tmp/post_body.txt \
+            -X POST "$BASE?on_conflict=plantel_id" \
+            -H "apikey: $KEY" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H 'Prefer: resolution=merge-duplicates,return=minimal' \
+            --data-binary @/tmp/same_row.json
+          cat /tmp/post_headers.txt
+          cat /tmp/post_body.txt
+          echo
+
+          STATUS=$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/post_headers.txt)
+          case "$STATUS" in
+            200|201|204) echo 'WRITE_OK' ;;
+            *) echo "WRITE_FAILED status=$STATUS" >&2; exit 4 ;;
+          esac
+
+          echo 'GET after write'
+          curl -sS -o /tmp/get2_body.json \
+            -H "apikey: $KEY" \
+            -H 'Accept: application/json' \
+            "$BASE?plantel_id=eq.$ID&select=plantel_id,payload,updated_at_ms&limit=1"
+          python3 - <<'PY'
+import json,sys
+before=json.load(open('/tmp/get_body.json'))
+after=json.load(open('/tmp/get2_body.json'))
+if before != after:
+    print('ERROR: row changed unexpectedly', file=sys.stderr)
+    print('before=', before)
+    print('after=', after)
+    sys.exit(5)
+print('VERIFY_OK')
+PY
