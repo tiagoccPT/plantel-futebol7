@@ -952,47 +952,99 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     return Card(
       key: ValueKey(player.id),
       color: _panel2,
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13), side: BorderSide(color: activeColor.withValues(alpha: 0.35))),
+      margin: const EdgeInsets.symmetric(vertical: 1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(11),
+        side: BorderSide(color: activeColor.withValues(alpha: 0.35)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ReorderableDragStartListener(
               index: index,
-              child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.drag_indicator, color: _muted, size: 20)),
+              child: const Padding(
+                padding: EdgeInsets.all(3),
+                child: Icon(Icons.drag_indicator, color: _muted, size: 18),
+              ),
             ),
             Container(
-              width: 34,
-              height: 34,
+              width: 30,
+              height: 30,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: activeColor, borderRadius: BorderRadius.circular(10)),
-              child: Text(player.numero.isEmpty ? '—' : player.numero, style: TextStyle(color: player.status == PlayerStatus.suplente ? _bg : Colors.white, fontWeight: FontWeight.w900)),
+              decoration: BoxDecoration(
+                color: activeColor,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                player.numero.isEmpty ? '—' : player.numero,
+                style: TextStyle(
+                  color: player.status == PlayerStatus.suplente ? _bg : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 6),
             Expanded(
+              flex: 5,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(player.nome, style: const TextStyle(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
+                  Text(
+                    player.nome,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, height: 1.05),
+                  ),
+                  const SizedBox(height: 2),
                   Text(
                     '${player.ano.isEmpty ? '—' : player.ano} • ${player.principal.isEmpty ? '—' : player.principal}${player.secundaria.isEmpty ? '' : ' / ${player.secundaria}'}',
-                    style: const TextStyle(color: _muted, fontSize: 10),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Wrap(
-                    spacing: 3,
-                    runSpacing: 2,
-                    children: [
-                      _statusButton(player, PlayerStatus.inicial, 'Inicial', Icons.sports_soccer),
-                      _statusButton(player, PlayerStatus.suplente, 'Suplente', Icons.event_seat_outlined),
-                      _statusButton(player, PlayerStatus.reserva, 'Reserva', Icons.inventory_2_outlined),
-                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 30, height: 30), visualDensity: VisualDensity.compact, tooltip: 'Editar', onPressed: () => _editPlayer(player), icon: const Icon(Icons.edit_outlined, size: 17)),
-                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 30, height: 30), visualDensity: VisualDensity.compact, tooltip: 'Eliminar', onPressed: () => _removePlayer(player), icon: const Icon(Icons.delete_outline, size: 18)),
-                    ],
+                    style: const TextStyle(color: _muted, fontSize: 9.5, height: 1.0),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              flex: 9,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _statusButton(player, PlayerStatus.inicial, 'Inicial', Icons.sports_soccer),
+                      const SizedBox(width: 2),
+                      _statusButton(player, PlayerStatus.suplente, 'Suplente', Icons.event_seat_outlined),
+                      const SizedBox(width: 2),
+                      _statusButton(player, PlayerStatus.reserva, 'Reserva', Icons.inventory_2_outlined),
+                      const SizedBox(width: 2),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Editar',
+                        onPressed: () => _editPlayer(player),
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Eliminar',
+                        onPressed: () => _removePlayer(player),
+                        icon: const Icon(Icons.delete_outline, size: 17),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -1013,13 +1065,16 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       style: FilledButton.styleFrom(
         backgroundColor: active ? color.withValues(alpha: 0.95) : _panel,
         foregroundColor: active && status == PlayerStatus.suplente ? _bg : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
       ),
-      icon: Icon(icon, size: 12),
-      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+      icon: Icon(icon, size: 11),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+      ),
     );
   }
 
