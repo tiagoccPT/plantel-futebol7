@@ -1,0 +1,39 @@
+name: Apply compact Flutter layout v2
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - compact-layout-v2-trigger.txt
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-application:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Apply compact layout
+        run: python3 tools/apply_compact_layout_v2.py
+
+      - name: Verify requested changes
+        run: |
+          grep -q "version: 1.0.1+2" flutter_app/pubspec.yaml
+          grep -q "Widget _benchBars()" flutter_app/lib/main.dart
+          grep -q "clamp(300.0, 520.0)" flutter_app/lib/main.dart
+          grep -q "SizedBox(height: 620, child: _leftPanel())" flutter_app/lib/main.dart
+          grep -q "BoxConstraints.tightFor(width: 30, height: 30)" flutter_app/lib/main.dart
+
+      - name: Commit updated Flutter application
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
+          git commit -m "Compactar plantel, campo e barras de suplentes e reservas" || exit 0
+          git push origin HEAD:main
