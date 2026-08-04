@@ -26,11 +26,7 @@ jobs:
           cat /tmp/create_headers.txt
           cat /tmp/create_body.txt
           echo
-          URI=$(python3 - <<'PY'
-import json
-print(json.load(open('/tmp/create_body.txt'))['uri'])
-PY
-)
+          URI=$(jq -r '.uri' /tmp/create_body.txt)
           echo "URI=$URI"
           echo 'GET verify'
           curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.txt "$URI"
