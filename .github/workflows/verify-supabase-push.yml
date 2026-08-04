@@ -1,0 +1,79 @@
+name: Verify Supabase Push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'verify-supabase-push-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Supabase and record result
+        shell: bash
+        run: |
+          set +e
+          BASE='https://hzhplnxrnqiejfrnmksr.supabase.co/rest/v1/plantel_state'
+          KEY='sb_publishable_n2VlIKJp5I7DBo8PE9SYQA_xjwn2izV'
+          ID='019fb865-7007-7bb3-9f93-68f50bf7daa6'
+          RESULT='FAIL'
+          DETAIL='unknown'
+
+          curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.json \
+            -H "apikey: $KEY" -H 'Accept: application/json' \
+            "$BASE?plantel_id=eq.$ID&select=plantel_id,payload,updated_at_ms&limit=1"
+          CURL_GET=$?
+          GET_STATUS=$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/get_headers.txt 2>/dev/null)
+
+          if [ "$CURL_GET" -eq 0 ] && [ "$GET_STATUS" = '200' ]; then
+            python3 - <<'PY'
+import json,sys
+try:
+    rows=json.load(open('/tmp/get_body.json'))
+    if not isinstance(rows,list) or len(rows)!=1:
+        sys.exit(2)
+    row=rows[0]
+    if row.get('plantel_id')!='019fb865-7007-7bb3-9f93-68f50bf7daa6':
+        sys.exit(3)
+    json.dump({'plantel_id':row['plantel_id'],'payload':row['payload'],'updated_at_ms':row.get('updated_at_ms',0)},open('/tmp/same_row.json','w'))
+except Exception:
+    sys.exit(4)
+PY
+            PARSE=$?
+            if [ "$PARSE" -eq 0 ]; then
+              curl -sS -D /tmp/post_headers.txt -o /tmp/post_body.txt \
+                -X POST "$BASE?on_conflict=plantel_id" \
+                -H "apikey: $KEY" \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -H 'Prefer: resolution=merge-duplicates,return=minimal' \
+                --data-binary @/tmp/same_row.json
+              CURL_POST=$?
+              POST_STATUS=$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/post_headers.txt 2>/dev/null)
+              if [ "$CURL_POST" -eq 0 ] && { [ "$POST_STATUS" = '200' ] || [ "$POST_STATUS" = '201' ] || [ "$POST_STATUS" = '204' ]; }; then
+                RESULT='OK'
+                DETAIL="read=200 write=$POST_STATUS row=1"
+              else
+                DETAIL="read=200 write=${POST_STATUS:-none}"
+              fi
+            else
+              DETAIL="read=200 row_invalid parse=$PARSE"
+            fi
+          else
+            BODY=$(head -c 300 /tmp/get_body.json 2>/dev/null | tr '\n' ' ')
+            DETAIL="read=${GET_STATUS:-none} curl=$CURL_GET body=$BODY"
+          fi
+
+          printf 'result=%s\ndetail=%s\nchecked_at=%s\n' "$RESULT" "$DETAIL" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > supabase-verify-result.txt
+          cat supabase-verify-result.txt
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase-verify-result.txt
+          git commit -m 'Registar resultado da verificação Supabase' || true
+          git push
