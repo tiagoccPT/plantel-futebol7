@@ -1,6 +1,10 @@
 name: Fix player row middle gap
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'player-row-gap-trigger.txt'
   pull_request_target:
     branches: [main]
     paths:
