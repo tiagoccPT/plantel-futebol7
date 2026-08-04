@@ -192,7 +192,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       }
       if (mounted) setState(() => _saveStatus = 'Plantel online sincronizado');
     } catch (_) {
-      if (mounted) setState(() => _saveStatus = 'Guardado');
+      if (mounted) {
+        setState(() => _saveStatus = 'Guardado localmente • sem ligação online');
+      }
       _scheduleRetry();
     }
   }
@@ -241,7 +243,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       return true;
     } catch (_) {
       if (showStatus && mounted) {
-        setState(() => _saveStatus = 'Guardado');
+        setState(() => _saveStatus = 'Guardado localmente • sem ligação online');
       }
       return false;
     } finally {
@@ -330,7 +332,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       }
       return true;
     } catch (_) {
-      if (mounted) setState(() => _saveStatus = 'Guardado');
+      if (mounted) {
+        setState(() => _saveStatus = 'Guardado localmente • sem ligação online');
+      }
       _scheduleRetry();
       return false;
     } finally {
@@ -711,7 +715,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       );
       return;
     }
-    final text = 'Plantel Futebol de 7\n${_storage.webShareUrl}\nID do plantel: ${_storage.dbId}';
+    final text = 'Plantel Futebol de 7\nID do plantel: ${_storage.dbId}';
     await Share.share(text, subject: 'Plantel Futebol de 7');
   }
 
