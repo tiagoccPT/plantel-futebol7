@@ -1,0 +1,35 @@
+name: Apply compact Flutter layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/apply_compact_layout.py'
+      - '.github/workflows/apply-compact-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply compact layout
+        run: python tools/apply_compact_layout.py
+      - name: Commit update
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
+          git commit -m "Compactar plantel, campo e barras de suplentes e reservas"
+          git push origin main
