@@ -10,7 +10,59 @@ permissions:
   contents: read
 
 jobs:
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Supabase read and write access
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://hzhplnxrnqiejfrnmksr.supabase.co/rest/v1/plantel_state'
+          KEY='sb_publishable_n2VlIKJp5I7DBo8PE9SYQA_xjwn2izV'
+          ID='019fb865-7007-7bb3-9f93-68f50bf7daa6'
+
+          curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.json \
+            -H "apikey: $KEY" -H 'Accept: application/json' \
+            "$BASE?plantel_id=eq.$ID&select=plantel_id,payload,updated_at_ms&limit=1"
+
+          GET_STATUS=$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/get_headers.txt)
+          echo "GET_STATUS=$GET_STATUS"
+          cat /tmp/get_body.json
+          echo
+          [ "$GET_STATUS" = '200' ]
+
+          python3 - <<'PY'
+import json,sys
+rows=json.load(open('/tmp/get_body.json'))
+if not isinstance(rows,list) or len(rows)!=1:
+    print('Expected exactly one plantel row; got:', rows, file=sys.stderr)
+    sys.exit(2)
+row=rows[0]
+json.dump({
+    'plantel_id': row['plantel_id'],
+    'payload': row['payload'],
+    'updated_at_ms': row.get('updated_at_ms',0),
+}, open('/tmp/same_row.json','w'))
+print('READ_OK')
+PY
+
+          curl -sS -D /tmp/post_headers.txt -o /tmp/post_body.txt \
+            -X POST "$BASE?on_conflict=plantel_id" \
+            -H "apikey: $KEY" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            -H 'Prefer: resolution=merge-duplicates,return=minimal' \
+            --data-binary @/tmp/same_row.json
+
+          POST_STATUS=$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/post_headers.txt)
+          echo "POST_STATUS=$POST_STATUS"
+          cat /tmp/post_body.txt
+          echo
+          case "$POST_STATUS" in 200|201|204) ;; *) exit 3 ;; esac
+          echo 'WRITE_OK'
+
   android:
+    needs: supabase
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +91,7 @@ jobs:
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
 
   windows:
+    needs: supabase
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
