@@ -1,64 +1,178 @@
 <!DOCTYPE html>
 <html lang="pt">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestor de Plantel Futebol de 7</title>
 <style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08111f;color:#fff;font-family:Arial,sans-serif}
-.box{max-width:520px;margin:20px;padding:24px;border:1px solid #29415f;border-radius:14px;background:#11213a;text-align:center}
-.spinner{width:40px;height:40px;margin:18px auto;border:4px solid #38506f;border-top-color:#dff4e4;border-radius:50%;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
-</style></head><body>
-<div class="box"><h2>A abrir o Gestor de Plantel…</h2><div class="spinner"></div><p id="msg">A preparar a aplicação.</p></div>
+html,body{margin:0;min-height:100%;font-family:Arial;background:#08111f;color:#fff}
+body{display:flex;align-items:center;justify-content:center;padding:20px}
+main{text-align:center;background:#11213a;border:1px solid #29415f;border-radius:14px;padding:24px;width:min(520px,100%)}
+.s{width:42px;height:42px;margin:18px auto;border:4px solid #38506f;border-top-color:#dff4e4;border-radius:50%;animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}#e{color:#ffb6b6}
+</style></head>
+<body><main><h1>Gestor de Plantel Futebol de 7</h1><div class="s"></div><p id="m">A abrir a aplicação…</p><p id="e"></p></main>
 <script>
 (async()=>{
-const msg=document.getElementById("msg");
+const replacement=`  let storageUri="",remoteReady=false;
+  const DB_API="https://api.jsonstorage.net/v1/json";
+  const CACHE_KEY="f7_cache_v3",URI_KEY="f7_uri_v3";
+
+  function setSaveStatus(message,isError=false){
+    els.saveStatus.textContent=message;
+    els.saveStatus.style.color=isError?"#ffb6b6":"#cfe7d4";
+  }
+
+  function getUri(){
+    const p=new URLSearchParams(location.hash.slice(1));
+    storageUri=p.get("db")||localStorage.getItem(URI_KEY)||"";
+    if(storageUri){
+      localStorage.setItem(URI_KEY,storageUri);
+      history.replaceState(null,"",location.pathname+location.search+"#db="+encodeURIComponent(storageUri));
+    }
+  }
+
+  function readEmbeddedState(){
+    try{
+      const p=JSON.parse(document.getElementById("embedded-state").textContent||"{}");
+      return{players:Array.isArray(p.players)?p.players:[],updatedAt:Number(p.updatedAt)||0};
+    }catch{return{players:[],updatedAt:0}}
+  }
+
+  function localState(){
+    try{
+      const p=JSON.parse(localStorage.getItem(CACHE_KEY)||"{}");
+      return{players:Array.isArray(p.players)?p.players:[],updatedAt:Number(p.updatedAt)||0};
+    }catch{return{players:[],updatedAt:0}}
+  }
+
+  function cache(){
+    localStorage.setItem(CACHE_KEY,JSON.stringify({players:state.players,updatedAt:state.updatedAt}));
+  }
+
+  function save(){
+    state.updatedAt=Date.now();
+    cache();
+    if(remoteReady){
+      clearTimeout(saveTimer);
+      setSaveStatus("Alterações por guardar…");
+      saveTimer=setTimeout(()=>guardarOnline(false),700);
+    }else{
+      saveAgain=true;
+      setSaveStatus("Guardado neste dispositivo. A sincronizar…");
+    }
+  }
+
+  async function ensureDb(){
+    if(storageUri)return;
+    const r=await fetch(DB_API,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({players:state.players,updatedAt:state.updatedAt||Date.now()})
+    });
+    const j=await r.json();
+    if(!r.ok||!j.uri)throw new Error("Não foi possível criar o armazenamento online.");
+    storageUri=j.uri;
+    localStorage.setItem(URI_KEY,storageUri);
+    history.replaceState(null,"",location.pathname+location.search+"#db="+encodeURIComponent(storageUri));
+  }
+
+  async function syncOnline(){
+    try{
+      getUri();
+      setSaveStatus("A ligar ao armazenamento online…");
+      if(!storageUri){
+        await ensureDb();
+        remoteReady=true;
+        setSaveStatus("Armazenamento online criado.");
+        return;
+      }
+      const r=await fetch(storageUri,{cache:"no-store"});
+      if(!r.ok)throw new Error();
+      const p=await r.json();
+      const remote={players:Array.isArray(p.players)?p.players:[],updatedAt:Number(p.updatedAt)||0};
+      if(remote.updatedAt>state.updatedAt){
+        state.players=remote.players;
+        state.updatedAt=remote.updatedAt;
+        cache();
+        render();
+      }
+      remoteReady=true;
+      if(state.updatedAt>remote.updatedAt||saveAgain){
+        saveAgain=false;
+        await guardarOnline(false);
+      }else setSaveStatus("Plantel online sincronizado.");
+    }catch(e){
+      console.error(e);
+      setSaveStatus("Sem ligação online. Ficou guardado neste dispositivo.",true);
+    }
+  }
+
+  function load(){
+    const e=readEmbeddedState(),l=localState(),n=l.updatedAt>e.updatedAt?l:e;
+    state.players=n.players;
+    state.updatedAt=n.updatedAt;
+    syncOnline();
+  }
+
+  async function guardarOnline(manual=true){
+    clearTimeout(saveTimer);
+    if(saving){saveAgain=true;return}
+    saving=true;
+    try{
+      await ensureDb();
+      remoteReady=true;
+      if(manual){state.updatedAt=Date.now();cache()}
+      setSaveStatus("A guardar online…");
+      const r=await fetch(storageUri,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({players:state.players,updatedAt:state.updatedAt})
+      });
+      if(!r.ok)throw new Error();
+      setSaveStatus("Guardado online às "+new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}));
+    }catch(e){
+      console.error(e);
+      remoteReady=false;
+      setSaveStatus("Erro online. Ficou guardado neste dispositivo.",true);
+      if(manual)alert("Não foi possível guardar online neste momento.");
+    }finally{
+      saving=false;
+      if(saveAgain&&remoteReady){saveAgain=false;saveTimer=setTimeout(()=>guardarOnline(false),150)}
+    }
+  }
+
+  async function partilharAplicacao(){
+    try{
+      await ensureDb();
+      const url=location.href;
+      if(navigator.share){
+        try{await navigator.share({title:"Plantel Futebol de 7",text:"Ligação para abrir e editar o plantel.",url});return}
+        catch(e){if(e&&e.name==="AbortError")return}
+      }
+      try{await navigator.clipboard.writeText(url);setSaveStatus("Ligação do plantel copiada.")}
+      catch{prompt("Copie esta ligação do plantel:",url)}
+    }catch{alert("Não foi possível preparar a ligação de partilha.")}
+  }
+
+  function escapeHtml(value) {`;
+
 try{
-  const src=await fetch("https://raw.githubusercontent.com/tiagoccPT/plantel-futebol7/main/index.html?"+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("Fonte indisponível");return r.text()});
-  const m=src.match(/const DATA='([^']+)'/);
-  if(!m)throw new Error("Dados da aplicação não encontrados");
-  const bin=atob(m[1]),bytes=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-  let html=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
-
-  html=html.replace(
-    '  const JSON_BLOB_ID = "__JSONBLOB_ID__";\n  const JSON_BLOB_URL = "https://jsonblob.com/api/jsonBlob/" + JSON_BLOB_ID;\n',
-    '  const LOCAL_STATE_KEY = "f7_plantel_state_v2";\n  const BLOB_ID_KEY = "f7_plantel_blob_id_v2";\n  let JSON_BLOB_ID = new URLSearchParams(location.hash.replace(/^#/, "")).get("blob") || localStorage.getItem(BLOB_ID_KEY) || "";\n  let JSON_BLOB_URL = JSON_BLOB_ID ? "https://jsonblob.com/api/jsonBlob/" + JSON_BLOB_ID : "";\n'
-  );
-
-  const start=html.indexOf("  function save() {");
-  const end=html.indexOf("  async function shareApp()");
-  if(start<0||end<0)throw new Error("Versão da aplicação não reconhecida");
-  const backend=`  function snapshot(){return{players:state.players,updatedAt:state.updatedAt}}
-  function saveLocal(){try{localStorage.setItem(LOCAL_STATE_KEY,JSON.stringify(snapshot()))}catch(e){console.warn(e)}}
-  function updateShareUrl(){if(!JSON_BLOB_ID)return;localStorage.setItem(BLOB_ID_KEY,JSON_BLOB_ID);const p=new URLSearchParams();p.set("blob",JSON_BLOB_ID);history.replaceState(null,"",location.pathname+location.search+"#"+p.toString())}
-  async function ensureOnlineBlob(){if(JSON_BLOB_URL)return JSON_BLOB_URL;const r=await fetch("https://jsonblob.com/api/jsonBlob",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(snapshot())});if(!r.ok)throw new Error("Falha ao criar armazenamento");const loc=r.headers.get("Location")||r.headers.get("location"),hid=r.headers.get("X-jsonblob")||r.headers.get("x-jsonblob"),did=loc?loc.split("/").filter(Boolean).pop():"";JSON_BLOB_ID=hid||did;if(!JSON_BLOB_ID)throw new Error("Sem identificador");JSON_BLOB_URL="https://jsonblob.com/api/jsonBlob/"+JSON_BLOB_ID;updateShareUrl();return JSON_BLOB_URL}
-  function save(){state.updatedAt=Date.now();saveLocal();clearTimeout(saveTimer);setSaveStatus("Alterações por guardar…");saveTimer=setTimeout(()=>saveOnline(false),850)}
-  async function load(){setSaveStatus("A carregar o plantel…");try{const l=JSON.parse(localStorage.getItem(LOCAL_STATE_KEY)||"null");if(l&&Array.isArray(l.players)){state.players=l.players;state.updatedAt=Number(l.updatedAt)||0}}catch(e){console.warn(e)}
-    if(!JSON_BLOB_ID){try{await ensureOnlineBlob();setSaveStatus("Plantel online pronto.")}catch(e){console.warn(e);setSaveStatus("Modo local ativo. A app continua funcional.",true)}saveLocal();return}
-    JSON_BLOB_URL="https://jsonblob.com/api/jsonBlob/"+JSON_BLOB_ID;updateShareUrl();
-    try{const r=await fetch(JSON_BLOB_URL,{method:"GET",headers:{"Accept":"application/json"},cache:"no-store"});if(!r.ok)throw new Error("Falha ao carregar");const d=await r.json();if(Array.isArray(d.players)){state.players=d.players;state.updatedAt=Number(d.updatedAt)||0;saveLocal()}setSaveStatus("Plantel online carregado.")}catch(e){console.warn(e);setSaveStatus("Sem ligação online. A usar a cópia local.",true)}
-  }
-  async function saveOnline(manual=true){if(saving){saveAgain=true;return}clearTimeout(saveTimer);saving=true;state.updatedAt=Date.now();saveLocal();setSaveStatus("A guardar online…");
-    try{await ensureOnlineBlob();const r=await fetch(JSON_BLOB_URL,{method:"PUT",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(snapshot())});if(!r.ok)throw new Error("Falha ao guardar");const t=new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit",second:"2-digit"});setSaveStatus("Guardado online às "+t)}
-    catch(e){console.warn(e);setSaveStatus("Guardado neste dispositivo. Online indisponível.",true);if(manual)alert("A aplicação ficou guardada neste dispositivo. A sincronização online não está disponível neste momento.")}
-    finally{saving=false;if(saveAgain){saveAgain=false;saveTimer=setTimeout(()=>saveOnline(false),150)}}
-  }
-
-`;
-  html=html.slice(0,start)+backend+html.slice(end);
-
-  const ss=html.indexOf("  async function shareApp()");
-  const se=html.indexOf("  function ",ss+10);
-  if(ss<0||se<0)throw new Error("Partilha não reconhecida");
-  const share=`  async function shareApp(){try{await ensureOnlineBlob()}catch(e){console.warn(e)}const url=location.href;try{if(navigator.share){await navigator.share({title:"Plantel Futebol de 7",text:"Plantel editável de futebol de 7.",url});return}}catch(e){if(e&&e.name==="AbortError")return}try{await navigator.clipboard.writeText(url);setSaveStatus("Ligação copiada.")}catch(e){prompt("Copie esta ligação:",url)}}
-
-`;
-  html=html.slice(0,ss)+share+html.slice(se);
-  html=html.replace("As alterações são guardadas online no mesmo plantel. Toque ou clique num","As alterações são guardadas automaticamente. Use <b>Partilhar</b> para abrir o mesmo plantel noutro dispositivo. Toque ou clique num");
-
-  document.open();document.write(html);document.close();
+  const r=await fetch("https://raw.githubusercontent.com/tiagoccPT/plantel-futebol7/main/index.html?"+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw Error("Não foi possível carregar a aplicação.");
+  const s=await r.text(),x=s.match(/const DATA='([^']+)'/);
+  if(!x)throw Error("Dados da aplicação não encontrados.");
+  if(!window.DecompressionStream)throw Error("Atualize o navegador.");
+  const b=atob(x[1]),u=new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+  const h=await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  const p=/  function getSiteId\(\) \{[\s\S]*?  function escapeHtml\(value\) \{/;
+  if(!p.test(h))throw Error("Não foi possível ativar o armazenamento online.");
+  document.open();document.write(h.replace(p,replacement));document.close();
 }catch(e){
-  console.error(e);msg.textContent="Não foi possível abrir a aplicação. Atualize a página.";
-  document.querySelector(".spinner").style.display="none";
+  console.error(e);
+  document.querySelector(".s").style.display="none";
+  document.getElementById("m").textContent="Não foi possível abrir a aplicação.";
+  document.getElementById("e").textContent=e.message;
 }
 })();
 </script></body></html>
