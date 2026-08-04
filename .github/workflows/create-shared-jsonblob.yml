@@ -1,0 +1,29 @@
+name: Create Shared JSONBlob
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'create-shared-jsonblob-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create empty shared JSONBlob
+        shell: bash
+        run: |
+          set -e
+          curl -sS -D /tmp/headers.txt -o /tmp/body.txt \
+            -X POST 'https://jsonblob.com/api/jsonBlob' \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            --data '{"players":[],"cards":[],"tactics":[],"activeTacticId":"","updatedAt":0}'
+          echo '--- headers ---'
+          cat /tmp/headers.txt
+          echo '--- body ---'
+          cat /tmp/body.txt
+          echo
