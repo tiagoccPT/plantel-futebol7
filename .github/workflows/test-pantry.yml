@@ -1,0 +1,55 @@
+name: Test Pantry Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test-pantry-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create pantry and test basket CRUD
+        shell: bash
+        run: |
+          set -e
+          PAYLOAD='{"players":[],"cards":[],"tactics":[],"activeTacticId":"","updatedAt":0}'
+          echo 'CREATE PANTRY'
+          curl -sS -D /tmp/pantry_headers.txt -o /tmp/pantry_body.txt \
+            -X POST 'https://getpantry.cloud/apiv1/pantry/create' \
+            -H 'Content-Type: application/json' \
+            --data '{}'
+          cat /tmp/pantry_headers.txt
+          cat /tmp/pantry_body.txt
+          echo
+          PANTRY_ID=$(jq -r '.pantryID // .id // .PantryID // empty' /tmp/pantry_body.txt)
+          echo "PANTRY_ID=$PANTRY_ID"
+          test -n "$PANTRY_ID"
+          URL="https://getpantry.cloud/apiv1/pantry/$PANTRY_ID/basket/plantel"
+          echo 'CREATE BASKET'
+          curl -sS -D /tmp/post_headers.txt -o /tmp/post_body.txt \
+            -X POST "$URL" -H 'Content-Type: application/json' --data "$PAYLOAD"
+          cat /tmp/post_headers.txt
+          cat /tmp/post_body.txt
+          echo
+          echo 'GET BASKET'
+          curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.txt "$URL"
+          cat /tmp/get_headers.txt
+          cat /tmp/get_body.txt
+          echo
+          echo 'PUT BASKET'
+          curl -sS -D /tmp/put_headers.txt -o /tmp/put_body.txt \
+            -X PUT "$URL" -H 'Content-Type: application/json' --data "$PAYLOAD"
+          cat /tmp/put_headers.txt
+          cat /tmp/put_body.txt
+          echo
+          echo 'PANTRY DETAILS'
+          curl -sS -D /tmp/details_headers.txt -o /tmp/details_body.txt \
+            "https://getpantry.cloud/apiv1/pantry/$PANTRY_ID"
+          cat /tmp/details_headers.txt
+          cat /tmp/details_body.txt
+          echo
