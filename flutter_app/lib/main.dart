@@ -186,7 +186,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
         _activeTactic.apply(_data.players);
         await _storage.saveLocal(_data);
         if (mounted) setState(() {});
-      } else if (_data.players.isNotEmpty) {
+      } else {
         _syncActiveTacticFromPlayers();
         await _storage.saveRemote(_data);
       }
