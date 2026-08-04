@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'diagnose-jsonblob-trigger.txt'
+      - 'diagnose-jsonblob-renewal-trigger.txt'
 
 permissions:
   contents: read
@@ -13,16 +13,20 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Check configured JSONBlob
+      - name: Check whether PUT renews anonymous blob expiry
         shell: bash
         run: |
-          set +e
-          URL='https://jsonblob.com/api/jsonBlob/019fb865-7007-7bb3-9f93-68f50bf7daa6'
-          echo "GET $URL"
-          curl -sS -D /tmp/headers.txt -o /tmp/body.txt -w 'HTTP_STATUS=%{http_code}\n' \
-            -H 'Accept: application/json' "$URL"
-          echo '--- headers ---'
-          cat /tmp/headers.txt
-          echo '--- body first 1000 bytes ---'
-          head -c 1000 /tmp/body.txt || true
-          echo
+          set -e
+          URL='https://jsonblob.com/api/jsonBlob/019fce0d-87a0-7fa9-955e-0ee361687e90'
+          echo "GET before"
+          curl -sS -D /tmp/h1.txt -o /tmp/body.txt -H 'Accept: application/json' "$URL"
+          grep -i '^x-jsonblob-expires-at:' /tmp/h1.txt || true
+          echo "PUT same body"
+          curl -sS -D /tmp/h2.txt -o /tmp/body2.txt -X PUT "$URL" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            --data-binary @/tmp/body.txt
+          grep -i '^x-jsonblob-expires-at:' /tmp/h2.txt || true
+          echo "GET after"
+          curl -sS -D /tmp/h3.txt -o /tmp/body3.txt -H 'Accept: application/json' "$URL"
+          grep -i '^x-jsonblob-expires-at:' /tmp/h3.txt || true
