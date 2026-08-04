@@ -977,7 +977,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   }
 
   Widget _playerRow(Player player, int index) {
-    final androidCompact = defaultTargetPlatform == TargetPlatform.android &&
+    final androidCompact = Theme.of(context).platform == TargetPlatform.android &&
         MediaQuery.sizeOf(context).width < 600;
     final activeColor = !player.selected
         ? _reserve
@@ -1104,7 +1104,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   }
 
   Widget _statusButton(Player player, PlayerStatus status, String label, IconData icon) {
-    final androidCompact = defaultTargetPlatform == TargetPlatform.android &&
+    final androidCompact = Theme.of(context).platform == TargetPlatform.android &&
         MediaQuery.sizeOf(context).width < 600;
     final active = player.selected && player.status == status;
     final color = switch (status) {
