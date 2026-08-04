@@ -30,15 +30,8 @@ jobs:
         run: |
           rm -rf android
           flutter create --platforms=android --project-name plantel_futebol7 --org com.example .
-          python3 - <<'PY'
-from pathlib import Path
-p = Path('android/app/src/main/AndroidManifest.xml')
-s = p.read_text()
-if 'android.permission.INTERNET' not in s:
-    s = s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.INTERNET" />')
-s = s.replace('android:label="plantel_futebol7"', 'android:label="Plantel Futebol 7"')
-p.write_text(s)
-PY
+          sed -i '2i\    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="plantel_futebol7"/android:label="Plantel Futebol 7"/' android/app/src/main/AndroidManifest.xml
       - name: Dependencies
         working-directory: flutter_app
         run: flutter pub get
