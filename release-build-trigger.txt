@@ -1,0 +1,1 @@
+Build release 1.0.1 para Android e Windows após atualização do layout compacto.
