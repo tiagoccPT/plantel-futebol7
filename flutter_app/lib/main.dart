@@ -987,8 +987,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
               ),
             ),
             const SizedBox(width: 6),
-            Expanded(
-              flex: 5,
+            SizedBox(
+              width: 150,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,13 +1010,12 @@ class _PlantelHomePageState extends State<PlantelHomePage>
               ),
             ),
             const SizedBox(width: 6),
-            Expanded(
-              flex: 9,
+            Flexible(
               child: Align(
-                alignment: Alignment.centerRight,
+                alignment: Alignment.centerLeft,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.centerLeft,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
