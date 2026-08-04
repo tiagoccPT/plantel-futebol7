@@ -857,7 +857,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       physics: _dragInteractionActive ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.all(9),
       children: [
-        SizedBox(height: 720, child: _leftPanel()),
+        SizedBox(height: 620, child: _leftPanel()),
         const SizedBox(height: 10),
         _fieldPanel(),
       ],
@@ -952,24 +952,24 @@ class _PlantelHomePageState extends State<PlantelHomePage>
     return Card(
       key: ValueKey(player.id),
       color: _panel2,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13), side: BorderSide(color: activeColor.withValues(alpha: 0.35))),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Row(
           children: [
             ReorderableDragStartListener(
               index: index,
-              child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.drag_indicator, color: _muted)),
+              child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.drag_indicator, color: _muted, size: 20)),
             ),
             Container(
-              width: 38,
-              height: 38,
+              width: 34,
+              height: 34,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: activeColor, borderRadius: BorderRadius.circular(10)),
               child: Text(player.numero.isEmpty ? '—' : player.numero, style: TextStyle(color: player.status == PlayerStatus.suplente ? _bg : Colors.white, fontWeight: FontWeight.w900)),
             ),
-            const SizedBox(width: 9),
+            const SizedBox(width: 7),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -977,19 +977,19 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                   Text(player.nome, style: const TextStyle(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
                   Text(
                     '${player.ano.isEmpty ? '—' : player.ano} • ${player.principal.isEmpty ? '—' : player.principal}${player.secundaria.isEmpty ? '' : ' / ${player.secundaria}'}',
-                    style: const TextStyle(color: _muted, fontSize: 11),
+                    style: const TextStyle(color: _muted, fontSize: 10),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                    spacing: 3,
+                    runSpacing: 2,
                     children: [
                       _statusButton(player, PlayerStatus.inicial, 'Inicial', Icons.sports_soccer),
                       _statusButton(player, PlayerStatus.suplente, 'Suplente', Icons.event_seat_outlined),
                       _statusButton(player, PlayerStatus.reserva, 'Reserva', Icons.inventory_2_outlined),
-                      IconButton(visualDensity: VisualDensity.compact, tooltip: 'Editar', onPressed: () => _editPlayer(player), icon: const Icon(Icons.edit_outlined, size: 18)),
-                      IconButton(visualDensity: VisualDensity.compact, tooltip: 'Eliminar', onPressed: () => _removePlayer(player), icon: const Icon(Icons.delete_outline, size: 19)),
+                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 30, height: 30), visualDensity: VisualDensity.compact, tooltip: 'Editar', onPressed: () => _editPlayer(player), icon: const Icon(Icons.edit_outlined, size: 17)),
+                      IconButton(padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 30, height: 30), visualDensity: VisualDensity.compact, tooltip: 'Eliminar', onPressed: () => _removePlayer(player), icon: const Icon(Icons.delete_outline, size: 18)),
                     ],
                   ),
                 ],
@@ -1013,11 +1013,13 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       style: FilledButton.styleFrom(
         backgroundColor: active ? color.withValues(alpha: 0.95) : _panel,
         foregroundColor: active && status == PlayerStatus.suplente ? _bg : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
       ),
-      icon: Icon(icon, size: 14),
-      label: Text(label),
+      icon: Icon(icon, size: 12),
+      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -1065,22 +1067,9 @@ class _PlantelHomePageState extends State<PlantelHomePage>
               const SizedBox(height: 7),
               const Text('Arraste os cartões para mover; use a pega no canto para redimensionar e A−/A+ para a letra.', style: TextStyle(color: _muted, fontSize: 11)),
               const SizedBox(height: 10),
-              FootballField(
-                players: _data.players,
-                selectedCardId: _selectedCardId,
-                onSelect: (id) => setState(() => _selectedCardId = id),
-                onMove: _moveCard,
-                onResize: _resizeCard,
-                onFontChange: _fontChange,
-                onInteractionStart: () => _setDragInteraction(true),
-                onInteractionEnd: () => _setDragInteraction(false),
-              ),
-              const SizedBox(height: 12),
-              _substitutesBar(),
-              if (_reserves.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _reservesBar(),
-              ],
+              _compactField(),
+              const SizedBox(height: 8),
+              _benchBars(),
             ],
           ),
         ),
@@ -1091,83 +1080,150 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   List<Player> get _substitutes => _data.players.where((p) => p.selected && p.status == PlayerStatus.suplente).toList();
   List<Player> get _reserves => _data.players.where((p) => p.selected && p.status == PlayerStatus.reserva).toList();
 
-  Widget _substitutesBar() {
-    final subs = _substitutes;
+  Widget _compactField() {
+    final size = MediaQuery.sizeOf(context);
+    final desktop = size.width >= 980;
+    final fittedWidth = ((size.height - 250) * 800 / 1100).clamp(300.0, 520.0).toDouble();
+    final maxWidth = desktop ? fittedWidth : 520.0;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: FootballField(
+          players: _data.players,
+          selectedCardId: _selectedCardId,
+          onSelect: (id) => setState(() => _selectedCardId = id),
+          onMove: _moveCard,
+          onResize: _resizeCard,
+          onFontChange: _fontChange,
+          onInteractionStart: () => _setDragInteraction(true),
+          onInteractionEnd: () => _setDragInteraction(false),
+        ),
+      ),
+    );
+  }
+
+  Widget _benchBars() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _benchSection(
+            title: 'Suplentes',
+            icon: Icons.event_seat,
+            color: _gold,
+            players: _substitutes,
+            canPromote: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _benchSection(
+            title: 'Reservas',
+            icon: Icons.inventory_2_outlined,
+            color: _reserve,
+            players: _reserves,
+            canPromote: false,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _benchSection({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<Player> players,
+    required bool canPromote,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(15), border: Border.all(color: _gold.withValues(alpha: 0.55))),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: _panel2,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: color.withValues(alpha: 0.48)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Icon(Icons.event_seat, color: _gold, size: 19),
-              const SizedBox(width: 7),
-              const Expanded(child: Text('Suplentes', style: TextStyle(fontWeight: FontWeight.w900))),
-              Text('${subs.length}', style: const TextStyle(color: _gold)),
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 5),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900))),
+              Text('${players.length}', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
             ],
           ),
-          const SizedBox(height: 9),
-          if (subs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Seleciona “Suplente” num jogador para o colocar nesta barra.', style: TextStyle(color: _muted, fontSize: 11)),
-            )
-          else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [for (final player in subs) ...[_benchPlayerCard(player), const SizedBox(width: 8)]]),
-            ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 48,
+            child: players.isEmpty
+                ? const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Sem jogadores', style: TextStyle(color: _muted, fontSize: 10)),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final player in players) ...[
+                          _compactBenchCard(player, color, canPromote),
+                          const SizedBox(width: 6),
+                        ],
+                      ],
+                    ),
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _benchPlayerCard(Player player) {
+  Widget _compactBenchCard(Player player, Color color, bool canPromote) {
     return Container(
-      width: 164,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: const Color(0xFF172238), borderRadius: BorderRadius.circular(12), border: Border.all(color: _gold.withValues(alpha: 0.38))),
+      width: canPromote ? 138 : 122,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF172238),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 27,
+            height: 27,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(10)),
-            child: Text(player.numero.isEmpty ? '—' : player.numero, style: const TextStyle(color: _bg, fontWeight: FontWeight.w900)),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+            child: Text(
+              player.numero.isEmpty ? '—' : player.numero,
+              style: TextStyle(
+                color: color == _gold ? _bg : Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(player.nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(player.principal.isEmpty ? '—' : player.principal, style: const TextStyle(color: _muted, fontSize: 10)),
+                Text(player.nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                Text(player.principal.isEmpty ? '—' : player.principal, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 9)),
               ],
             ),
           ),
-          IconButton(visualDensity: VisualDensity.compact, tooltip: 'Colocar no campo', onPressed: () => _promoteSubstitute(player), icon: const Icon(Icons.arrow_upward, size: 17)),
-        ],
-      ),
-    );
-  }
-
-  Widget _reservesBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(14), border: Border.all(color: _reserve.withValues(alpha: 0.45))),
-      child: Wrap(
-        spacing: 7,
-        runSpacing: 7,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Icon(Icons.inventory_2_outlined, color: _muted, size: 17),
-          const Text('Reservas', style: TextStyle(fontWeight: FontWeight.w700)),
-          for (final player in _reserves)
-            Chip(
-              avatar: CircleAvatar(backgroundColor: _reserve, child: Text(player.numero.isEmpty ? '—' : player.numero, style: const TextStyle(fontSize: 10))),
-              label: Text(player.nome),
+          if (canPromote)
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 25, height: 25),
+              tooltip: 'Colocar no campo',
+              onPressed: () => _promoteSubstitute(player),
+              icon: const Icon(Icons.arrow_upward, size: 15),
             ),
         ],
       ),
