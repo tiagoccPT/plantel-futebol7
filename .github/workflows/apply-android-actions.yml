@@ -1,0 +1,35 @@
+name: Apply Android player action sizing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-actions-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply Android-only player row sizing
+        run: python tools/adjust_android_player_actions.py
+      - name: Verify changes
+        run: |
+          grep -q 'androidCompact ? 96 : 150' flutter_app/lib/main.dart
+          grep -q 'androidCompact ? 11.2 : 10' flutter_app/lib/main.dart
+          grep -q 'version: 1.0.5+6' flutter_app/pubspec.yaml
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
+          git commit -m "Equilibrar nome e botões dos jogadores no Android" || exit 0
+          git push origin main
