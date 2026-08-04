@@ -1,0 +1,26 @@
+name: Apply Supabase load fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase-load-fix-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/fix_supabase_load_newer.py
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flutter_app/lib/main.dart
+          git diff --cached --quiet && exit 0
+          git commit -m 'Sincronizar estado local mais recente mesmo sem jogadores'
+          git push
