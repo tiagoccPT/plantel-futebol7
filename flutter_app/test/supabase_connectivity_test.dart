@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
+  // Teste técnico de conectividade real usado apenas nesta PR de validação.
   test('Supabase permite ler e regravar o mesmo plantel', () async {
     const base = 'https://hzhplnxrnqiejfrnmksr.supabase.co/rest/v1/plantel_state';
     const key = 'sb_publishable_n2VlIKJp5I7DBo8PE9SYQA_xjwn2izV';
