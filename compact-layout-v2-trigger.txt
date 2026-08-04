@@ -1,0 +1,1 @@
+Aplicar atualização compacta do plantel, campo, suplentes e reservas em Flutter para Android e Windows.
