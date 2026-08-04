@@ -977,6 +977,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   }
 
   Widget _playerRow(Player player, int index) {
+    final androidCompact = defaultTargetPlatform == TargetPlatform.android &&
+        MediaQuery.sizeOf(context).width < 600;
     final activeColor = !player.selected
         ? _reserve
         : switch (player.status) {
@@ -1023,7 +1025,7 @@ class _PlantelHomePageState extends State<PlantelHomePage>
             ),
             const SizedBox(width: 6),
             SizedBox(
-              width: 150,
+              width: androidCompact ? 96 : 150,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1032,19 +1034,27 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                     player.nome,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, height: 1.05),
+                    style: TextStyle(
+                      fontSize: androidCompact ? 11.2 : 13,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${player.ano.isEmpty ? '—' : player.ano} • ${player.principal.isEmpty ? '—' : player.principal}${player.secundaria.isEmpty ? '' : ' / ${player.secundaria}'}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _muted, fontSize: 9.5, height: 1.0),
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: androidCompact ? 8.7 : 9.5,
+                      height: 1.0,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: androidCompact ? 3 : 6),
             Flexible(
               child: Align(
                 alignment: Alignment.centerLeft,
@@ -1055,26 +1065,32 @@ class _PlantelHomePageState extends State<PlantelHomePage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _statusButton(player, PlayerStatus.inicial, 'Inicial', Icons.sports_soccer),
-                      const SizedBox(width: 2),
+                      SizedBox(width: androidCompact ? 1 : 2),
                       _statusButton(player, PlayerStatus.suplente, 'Suplente', Icons.event_seat_outlined),
-                      const SizedBox(width: 2),
+                      SizedBox(width: androidCompact ? 1 : 2),
                       _statusButton(player, PlayerStatus.reserva, 'Reserva', Icons.inventory_2_outlined),
-                      const SizedBox(width: 2),
+                      SizedBox(width: androidCompact ? 1 : 2),
                       IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                        constraints: BoxConstraints.tightFor(
+                          width: androidCompact ? 29 : 26,
+                          height: androidCompact ? 29 : 26,
+                        ),
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Editar',
                         onPressed: () => _editPlayer(player),
-                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        icon: Icon(Icons.edit_outlined, size: androidCompact ? 18 : 16),
                       ),
                       IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                        constraints: BoxConstraints.tightFor(
+                          width: androidCompact ? 29 : 26,
+                          height: androidCompact ? 29 : 26,
+                        ),
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Eliminar',
                         onPressed: () => _removePlayer(player),
-                        icon: const Icon(Icons.delete_outline, size: 17),
+                        icon: Icon(Icons.delete_outline, size: androidCompact ? 19 : 17),
                       ),
                     ],
                   ),
@@ -1088,6 +1104,8 @@ class _PlantelHomePageState extends State<PlantelHomePage>
   }
 
   Widget _statusButton(Player player, PlayerStatus status, String label, IconData icon) {
+    final androidCompact = defaultTargetPlatform == TargetPlatform.android &&
+        MediaQuery.sizeOf(context).width < 600;
     final active = player.selected && player.status == status;
     final color = switch (status) {
       PlayerStatus.inicial => const Color(0xFF3F91DC),
@@ -1099,15 +1117,21 @@ class _PlantelHomePageState extends State<PlantelHomePage>
       style: FilledButton.styleFrom(
         backgroundColor: active ? color.withValues(alpha: 0.95) : _panel,
         foregroundColor: active && status == PlayerStatus.suplente ? _bg : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-        minimumSize: Size.zero,
+        padding: EdgeInsets.symmetric(
+          horizontal: androidCompact ? 6.5 : 5,
+          vertical: androidCompact ? 4.5 : 3,
+        ),
+        minimumSize: Size(0, androidCompact ? 29 : 0),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
       ),
-      icon: Icon(icon, size: 11),
+      icon: Icon(icon, size: androidCompact ? 13 : 11),
       label: Text(
         label,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: androidCompact ? 11.2 : 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
