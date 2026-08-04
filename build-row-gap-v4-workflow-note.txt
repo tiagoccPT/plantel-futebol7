@@ -1,0 +1,1 @@
+Build técnico da versão 1.0.3 Android e Windows após correção do espaço central nas linhas do plantel.
