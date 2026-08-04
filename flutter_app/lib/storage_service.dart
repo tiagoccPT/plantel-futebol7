@@ -45,10 +45,37 @@ class StorageService {
     await prefs.setString('f7_flutter_current_db', parsed);
   }
 
+  int _updatedAtFromRaw(String? raw) {
+    if (raw == null || raw.isEmpty) return -1;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return -1;
+      return (decoded['updatedAt'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return -1;
+    }
+  }
+
   Future<void> loadSavedDbId() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('f7_flutter_current_db');
-    if (saved != null && saved.trim().isNotEmpty) _dbId = saved.trim();
+    final saved = (prefs.getString('f7_flutter_current_db') ?? '').trim();
+
+    // A partir do backend Supabase existe um plantel principal comum aos
+    // dispositivos. Se uma instalação tinha ficado num ID antigo diferente,
+    // preservamos a cache mais recente antes de regressar ao ID canónico.
+    if (saved.isNotEmpty && saved != defaultDbId) {
+      final oldRaw = prefs.getString('f7_flutter_$saved');
+      final canonicalKey = 'f7_flutter_$defaultDbId';
+      final canonicalRaw = prefs.getString(canonicalKey);
+      if (_updatedAtFromRaw(oldRaw) > _updatedAtFromRaw(canonicalRaw) &&
+          oldRaw != null &&
+          oldRaw.isNotEmpty) {
+        await prefs.setString(canonicalKey, oldRaw);
+      }
+    }
+
+    _dbId = defaultDbId;
+    await prefs.setString('f7_flutter_current_db', defaultDbId);
   }
 
   String extractDbId(String input) {
