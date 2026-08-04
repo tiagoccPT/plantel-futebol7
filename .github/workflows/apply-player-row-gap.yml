@@ -1,0 +1,36 @@
+name: Fix player row middle gap
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - 'player-row-gap-trigger.txt'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply player row gap fix
+        run: python tools/fix_player_row_gap.py
+      - name: Verify layout
+        run: |
+          grep -q 'width: 150' flutter_app/lib/main.dart
+          grep -q 'alignment: Alignment.centerLeft' flutter_app/lib/main.dart
+          grep -q 'version: 1.0.3+4' flutter_app/pubspec.yaml
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
+          git commit -m "Remover espaço excessivo entre jogador e ações" || exit 0
+          git push origin main
