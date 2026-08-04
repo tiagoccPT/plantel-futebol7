@@ -1,0 +1,45 @@
+name: Create JsonStorage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'create-jsonstorage-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create and verify JsonStorage item
+        shell: bash
+        run: |
+          set -e
+          PAYLOAD='{"players":[],"cards":[],"tactics":[],"activeTacticId":"","updatedAt":0}'
+          echo 'POST create'
+          curl -sS -D /tmp/create_headers.txt -o /tmp/create_body.txt \
+            -X POST 'https://api.jsonstorage.net/v1/json' \
+            -H 'Content-Type: application/json' \
+            --data "$PAYLOAD"
+          cat /tmp/create_headers.txt
+          cat /tmp/create_body.txt
+          echo
+          URI=$(python3 - <<'PY'
+import json
+print(json.load(open('/tmp/create_body.txt'))['uri'])
+PY
+)
+          echo "URI=$URI"
+          echo 'GET verify'
+          curl -sS -D /tmp/get_headers.txt -o /tmp/get_body.txt "$URI"
+          cat /tmp/get_headers.txt
+          cat /tmp/get_body.txt
+          echo
+          echo 'PUT verify'
+          curl -sS -D /tmp/put_headers.txt -o /tmp/put_body.txt \
+            -X PUT "$URI" -H 'Content-Type: application/json' --data "$PAYLOAD"
+          cat /tmp/put_headers.txt
+          cat /tmp/put_body.txt
+          echo
