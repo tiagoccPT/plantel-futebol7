@@ -1,0 +1,34 @@
+name: Apply thinner player rows v3
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - 'player-row-v3-trigger.txt'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-application:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply player row update
+        run: python3 tools/apply_player_row_v3.py
+      - name: Verify update
+        run: |
+          grep -q "version: 1.0.2+3" flutter_app/pubspec.yaml
+          grep -q "margin: const EdgeInsets.symmetric(vertical: 1)" flutter_app/lib/main.dart
+          grep -q "crossAxisAlignment: CrossAxisAlignment.center" flutter_app/lib/main.dart
+      - name: Commit updated Flutter project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart flutter_app/pubspec.yaml
+          git commit -m "Afinar linhas do plantel e alinhar ações na mesma linha" || exit 0
+          git push origin HEAD:main
